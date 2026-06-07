@@ -1,4 +1,4 @@
-const CACHE_NAME = "burke-job-console-v12-cache-2";
+const CACHE_NAME = "burke-job-console-v12-cache-3";
 
 const FILES_TO_CACHE = [
   "./",
