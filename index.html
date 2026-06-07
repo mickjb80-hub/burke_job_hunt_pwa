@@ -16,14 +16,6 @@
 :root{--bg:#0c0f12;--panel:#13181d;--panel2:#1a2027;--line:#243038;--text:#e6edf3;--muted:#8a96a3;--dim:#6a7682;--accent:#6fb5ff;--blue:#3b82f6;--ok:#22c55e;--warn:#f59e0b;--bad:#ef4444;--purple:#a78bfa;--chip:#1f2730;--input:#0f1418;--shadow:0 1px 0 #1d262e inset,0 8px 24px rgba(0,0,0,.25)}
 *{box-sizing:border-box}html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}.top{position:sticky;top:0;z-index:50;background:rgba(12,15,18,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}.bar{max-width:1480px;margin:auto;padding:14px 20px;display:flex;gap:16px;align-items:center}.brand{display:flex;flex-direction:column}.brand b{font-size:15px}.brand small{font-size:11.5px;color:var(--muted)}.tabs{margin-left:auto;display:flex;gap:3px;flex-wrap:wrap}.tabs button{background:transparent;color:var(--muted);border:1px solid transparent;border-radius:8px;padding:8px 12px;font:inherit;cursor:pointer}.tabs button.active,.tabs button:hover{background:var(--panel);color:var(--text);border-color:var(--line)}main{max-width:1480px;margin:auto;padding:22px 20px 80px}section.view{display:none}section.view.active{display:block}h1{font-size:22px;margin:0 0 14px}h2{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:0 0 10px}h3{font-size:14px;margin:0 0 8px}.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px;box-shadow:var(--shadow)}.grid{display:grid;gap:14px}.cols-4{grid-template-columns:repeat(4,minmax(0,1fr))}.cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}.cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}@media(max-width:1000px){.cols-4{grid-template-columns:repeat(2,1fr)}.cols-3,.cols-2{grid-template-columns:1fr 1fr}}@media(max-width:700px){.cols-4,.cols-3,.cols-2{grid-template-columns:1fr}.bar{align-items:flex-start;flex-direction:column}.tabs{margin-left:0}}.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.spacer{flex:1}.btn{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:7px 12px;font:inherit;cursor:pointer}.btn:hover{border-color:#3a4b59}.btn.primary{background:var(--blue);border-color:var(--blue);color:white}.btn.danger{background:#3a1414;border-color:#5a1f1f;color:#fca5a5}.btn.small{padding:4px 9px;font-size:12px}.btn.ghost{background:transparent}input,select,textarea{background:var(--input);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font:inherit;width:100%}textarea{min-height:86px;resize:vertical;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.5px}input:focus,select:focus,textarea:focus{outline:none;border-color:var(--blue)}label,.field b{display:block;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.45px;font-weight:650;margin-bottom:4px}.field .v{font-size:13px}.field.full{grid-column:1/-1}.muted{color:var(--muted)}.dim{color:var(--dim)}.chip{display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:999px;background:var(--chip);border:1px solid var(--line);font-size:11.5px;color:var(--text)}.chip.ok{background:#0c2a17;border-color:#1a4d2c;color:#86efac}.chip.warn{background:#2d2008;border-color:#5b3f10;color:#fcd34d}.chip.bad{background:#2c0e0e;border-color:#5a1d1d;color:#fca5a5}.chip.info{background:#082c34;border-color:#0f4756;color:#67e8f9}.chip.purple{background:#1d1638;border-color:#3a2a6e;color:#c4b5fd}.band{display:inline-block;padding:3px 8px;border-radius:6px;font-size:11.5px;font-weight:700}.band.p1{background:#0c2a17;color:#86efac;border:1px solid #1a4d2c}.band.p2{background:#0c2436;color:#7dd3fc;border:1px solid #154b6e}.band.qualify{background:#2d2008;color:#fcd34d;border:1px solid #5b3f10}.band.warm{background:#1d1638;color:#c4b5fd;border:1px solid #3a2a6e}.band.reject{background:#2c0e0e;color:#fca5a5;border:1px solid #5a1d1d}.band.archive{background:#1a1f24;color:#94a3b8;border:1px solid #2a3138}.score{display:inline-block;min-width:34px;text-align:center;padding:2px 6px;border-radius:6px;font-size:11px;font-weight:700;background:#1a1f24;border:1px solid #2a3138}.score.good{background:#0c2a17;color:#86efac;border-color:#1a4d2c}.score.mid{background:#2d2008;color:#fcd34d;border-color:#5b3f10}.score.bad{background:#2c0e0e;color:#fca5a5;border-color:#5a1d1d}.stat{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;cursor:pointer}.stat:hover{border-color:#334454}.stat .num{font-size:28px;font-weight:700}.stat .lbl{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.4px}.stat.ok .num{color:var(--ok)}.stat.warn .num{color:var(--warn)}.stat.bad .num{color:var(--bad)}.stat.info .num{color:#06b6d4}ul.clean{list-style:none;padding:0;margin:0}ul.clean li{padding:9px 0;border-bottom:1px solid var(--line)}ul.clean li:last-child{border-bottom:none}.toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px}.toolbar input,.toolbar select{width:auto;min-width:150px}details.app{background:var(--panel);border:1px solid var(--line);border-radius:10px;margin-bottom:8px;padding:10px 12px}details.app[open]{background:var(--panel2);border-color:#324250}details.app summary{cursor:pointer;list-style:none;display:flex;gap:10px;align-items:center}details.app summary::-webkit-details-marker{display:none}.summary-line{display:flex;gap:10px;align-items:center;flex-wrap:wrap;width:100%}.summary-line .co{font-weight:750}.summary-line .ro{color:var(--muted)}.summary-line .right{margin-left:auto;display:flex;gap:6px;align-items:center;flex-wrap:wrap}.body{margin-top:12px;padding-top:12px;border-top:1px solid var(--line);display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}@media(max-width:950px){.body{grid-template-columns:1fr 1fr}}@media(max-width:650px){.body{grid-template-columns:1fr}}.flag-list{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}.action-item{display:grid;grid-template-columns:1fr auto;gap:12px;padding:12px;border:1px solid var(--line);background:var(--panel);border-radius:10px;margin-bottom:8px}.risk-red{border-left:3px solid var(--bad)}.risk-amber{border-left:3px solid var(--warn)}.risk-blue{border-left:3px solid var(--blue)}.risk-green{border-left:3px solid var(--ok)}.risk-purple{border-left:3px solid var(--purple)}.help{color:var(--dim);font-size:12px;margin-top:5px}.due-now{color:#fca5a5;font-weight:700}.due-soon{color:#fcd34d;font-weight:700}.due-ok{color:#9ca3af}.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#0c2a17;color:#86efac;border:1px solid #1a4d2c;padding:8px 14px;border-radius:8px;z-index:99;font-size:13px;opacity:0;pointer-events:none;transition:.2s}.toast.show{opacity:1}.weekly-report{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.5px;white-space:pre-wrap;line-height:1.55}.kv{display:grid;grid-template-columns:180px 1fr;gap:8px 12px}.kv .k{color:var(--muted);font-size:12px}.tag{display:inline-block;padding:1px 6px;background:var(--input);border:1px solid var(--line);border-radius:4px;font-size:11px;color:var(--muted);margin-right:4px}.warn-banner{background:#2d2008;border:1px solid #5b3f10;color:#fcd34d;padding:10px 14px;border-radius:8px;margin-bottom:14px}.bad-banner{background:#2c0e0e;border:1px solid #5a1d1d;color:#fca5a5;padding:10px 14px;border-radius:8px;margin-bottom:14px}
 </style>
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#0c0f12">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Job Hunt">
-<link rel="apple-touch-icon" href="icon-192.png">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
-<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
 </head>
 <body>
 <header class="top"><div class="bar"><div class="brand"><b>Burke Engineering — Job Hunt Console</b><small>v12 · Eccleston Park · fixed editable schema · v11 merge-import upgrade</small></div><nav class="tabs" id="tabs"><button data-view="dashboard" class="active">Dashboard</button><button data-view="pipeline">Pipeline</button><button data-view="actions">Actions</button><button data-view="cv">CV &amp; Evidence</button><button data-view="network">Network</button><button data-view="admin">Admin</button></nav></div></header>
@@ -32,7 +24,7 @@
 <section class="view" id="pipeline"><h1>Pipeline</h1><div class="toolbar"><input id="search" placeholder="Search company, role, location, sector..."><select id="filterBand"><option value="">All bands</option><option>P1 - Action now</option><option>P2 - This week</option><option>Qualify first</option><option>Keep warm</option><option>Do not progress</option><option>Archive</option></select><select id="filterWaiting"><option value="">Anyone waiting</option><option value="me">Waiting on me</option><option value="them">Waiting on them</option></select><select id="filterStage"><option value="">Any stage</option><option value="target">Target</option><option value="applied">Applied</option><option value="screening">Screening</option><option value="interview">Interview</option><option value="offer">Offer</option><option value="warm">Warm lead</option><option value="watchlist">Watchlist</option><option value="closed">Closed</option></select><span class="spacer"></span><button class="btn small primary" id="addAppBtn">+ Add role</button></div><div id="listView"></div></section>
 <section class="view" id="actions"><h1>Actions</h1><div class="toolbar"><select id="actionFilter"><option value="all">All actions</option><option value="overdue">Overdue only</option><option value="me">Waiting on me</option><option value="p1p2">P1 + P2 only</option><option value="qualify">Qualify first</option></select><span class="spacer"></span><button class="btn small" id="recalcBands">Recalculate bands</button></div><div id="actionList"></div></section>
 <section class="view" id="cv"><h1>CV &amp; Evidence</h1><div class="card"><h2>CV variants and file mapping</h2><p class="muted">Corrected to the three uploaded CV file names. Amend in Admin if the source files change.</p><div id="variantList" class="grid cols-2"></div></div><div class="card"><h2>STAR examples</h2><div id="starList"></div><button class="btn small primary" id="addStarBtn">+ Add STAR example</button></div><div class="card"><h2>Evidence bullets</h2><div id="evidenceList"></div><button class="btn small primary" id="addEvBtn">+ Add evidence bullet</button></div></section>
-<section class="view" id="network"><h1>Network &amp; Outreach</h1><div class="toolbar"><select id="networkFilter"><option value="all">All</option><option value="planned">Planned</option><option value="sent">Sent / awaiting reply</option><option value="replied">Replied / live</option><option value="dead">Dead / archive</option></select><span class="spacer"></span><button class="btn small primary" id="addOutreachBtn">+ Add outreach</button></div><div id="outreachList"></div></section>
+<section class="view" id="network"><h1>Network &amp; Outreach</h1><div class="toolbar"><select id="networkFilter"><option value="all">All</option><option value="planned">Planned</option><option value="sent">Sent / awaiting reply</option><option value="replied">Replied / live</option><option value="dead">Dead / archive</option></select><span class="spacer"></span><button class="btn small" id="importPipelineContactsBtn">Import pipeline contacts</button><button class="btn small primary" id="addOutreachBtn">+ Add outreach</button></div><div id="outreachList"></div></section>
 <section class="view" id="admin"><h1>Admin</h1><div class="card"><h2>Settings</h2><div class="grid cols-3"><div class="field"><b>Origin postcode</b><input id="setOrigin"></div><div class="field"><b>Max journey one-way, mins</b><input id="setMaxJourney" type="number" min="0"></div><div class="field"><b>Driving allowed</b><select id="setDriving"><option value="false">No, hard filter</option><option value="true">Yes</option></select></div><div class="field"><b>DBS/disclosure manageable</b><select id="setDbs"><option value="true">Yes, qualify not block</option><option value="false">No, hard block</option></select></div><div class="field"><b>Max travel</b><select id="setTravel"><option value="0">0%, fixed-site only</option><option value="under25">Up to 25%</option></select></div><div class="field"><b>Stale threshold, days</b><input id="setStale" type="number" min="7"></div></div><h3 style="margin-top:14px">CV variant → file mapping</h3><div id="cvFileMap" class="grid cols-2"></div><div class="row" style="margin-top:12px"><button class="btn primary" id="saveSettings">Save settings</button><span class="muted" id="settingsStatus"></span></div></div><div class="card"><h2>Templates</h2><div id="templateList"></div><button class="btn small primary" id="addTemplateBtn">+ Add template</button></div><div class="card"><h2>DBS log</h2><p class="muted">Log disclosure process. DBS should be qualified unless an employer has actually rejected or blocked the application.</p><div id="dbsLog"></div><button class="btn small primary" id="addDbsBtn">+ Add DBS log entry</button></div><div class="card"><h2>Data — export, import, reset</h2><p class="muted">localStorage is a cache. Export a JSON snapshot at least weekly.</p><div class="row"><button class="btn primary" id="exportBtn">Export snapshot JSON</button><button class="btn" id="importBtn">Import snapshot</button><input type="file" id="importFile" accept=".json" style="display:none;width:auto"><span class="spacer"></span><button class="btn danger" id="resetBtn">Reset to seed data</button></div><h3 style="margin-top:14px">Schema and counts</h3><div class="kv" id="dataCounts"></div></div></section>
 </main><div class="toast" id="toast">Saved</div>
 <script>
@@ -1427,23 +1419,92 @@ function renderAdmin(){const s=STATE.settings; $('#setOrigin').value=s.originPos
 $('#saveSettings').addEventListener('click',()=>{STATE.settings.originPostcode=$('#setOrigin').value||'L35 7NH';STATE.settings.maxJourneyMinutes=Number($('#setMaxJourney').value)||90;STATE.settings.drivingAllowed=$('#setDriving').value==='true';STATE.settings.dbsDisclosureManaged=$('#setDbs').value==='true';STATE.settings.maxTravelPercent=$('#setTravel').value;STATE.settings.staleThresholdDays=Number($('#setStale').value)||30;saveState();$('#settingsStatus').textContent='Saved '+new Date().toLocaleTimeString();toast('Settings saved');});
 $('#addAppBtn').addEventListener('click',()=>{const id=(STATE.apps.reduce((m,a)=>Math.max(m,Number(a.id)||0),0)||0)+1;STATE.apps.unshift(migrateApp({id,company:'New company',role:'New role',dateFound:TODAY_ISO,followUpDue:TODAY_ISO,waitingOn:'me'}));saveState();renderPipeline();setTimeout(()=>{const e=$('#app-'+id);if(e){e.open=true;e.scrollIntoView({block:'center'});}},50);});
 $('#addOutreachBtn').addEventListener('click',()=>{const id=(STATE.outreach.reduce((m,o)=>Math.max(m,Number(o.id)||0),0)||0)+1;STATE.outreach.unshift({id,name:'New contact',company:'',role:'',channel:'email',ask:'',status:'planned',lastMessage:'',nextNudge:TODAY_ISO,notes:'',source:''});saveState();renderNetwork();});
+function contactLooksUseful(a){
+  const person = String(a.contactPerson || '').trim();
+  const details = String(a.contactDetails || '').trim();
+  const hasEmail = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i.test(details);
+  const hasPhone = /(\+?\d[\d\s().-]{6,}\d)/.test(details);
+  if (person) return true;
+  if (hasEmail || hasPhone) return true;
+  return false;
+}
+function pickChannel(details){
+  const d = String(details || '');
+  if (/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i.test(d)) return 'email';
+  if (/linkedin/i.test(d)) return 'linkedin';
+  if (/(\+?\d[\d\s().-]{6,}\d)/.test(d)) return 'phone';
+  return 'other';
+}
+function importPipelineContacts(){
+  let added = 0;
+  let skipped = 0;
+  let nextId = (STATE.outreach.reduce((m,o)=>Math.max(m,Number(o.id)||0),0)||0);
+  const existing = new Set(STATE.outreach.map(o => [
+    String(o.name || '').trim().toLowerCase(),
+    String(o.company || '').trim().toLowerCase(),
+    String(o.role || '').trim().toLowerCase()
+  ].join('|')));
+
+  STATE.apps.forEach(a => {
+    if (!contactLooksUseful(a)) return;
+
+    const person = String(a.contactPerson || '').trim();
+    const details = String(a.contactDetails || '').trim();
+    const company = String(a.company || '').trim();
+    const role = String(a.role || '').trim();
+    const name = person || details || (company ? company + ' contact' : 'Pipeline contact');
+    const key = [name.toLowerCase(), company.toLowerCase(), role.toLowerCase()].join('|');
+
+    if (existing.has(key)) {
+      skipped++;
+      return;
+    }
+
+    STATE.outreach.unshift({
+      id: ++nextId,
+      name,
+      company,
+      role,
+      channel: pickChannel(details),
+      ask: `Follow up about ${role || 'the role'} at ${company || 'this company'}. Confirm salary, fixed-site status, travel/driving requirement and next hiring step.`,
+      status: 'planned',
+      lastMessage: a.lastContact || '',
+      nextNudge: a.followUpDue || TODAY_ISO,
+      notes: [
+        details ? `Contact details: ${details}` : '',
+        a.status ? `Pipeline status: ${a.status}` : '',
+        a.nextAction ? `Next action: ${a.nextAction}` : '',
+        a.sourceUrl ? `Source: ${a.sourceUrl}` : '',
+        a.notes ? `Pipeline notes: ${a.notes}` : ''
+      ].filter(Boolean).join('\n'),
+      source: `Imported from Pipeline role #${a.id}`
+    });
+
+    existing.add(key);
+    added++;
+  });
+
+  saveState();
+  renderNetwork();
+  toast(`${added} imported, ${skipped} skipped`);
+}
+$('#importPipelineContactsBtn').addEventListener('click',()=>{if(confirm('Import useful Pipeline contacts into Network? Existing matches will be skipped.'))importPipelineContacts();});
+
 $('#addStarBtn').addEventListener('click',()=>{STATE.starExamples.push({id:'star-'+Date.now(),tags:'',title:'New STAR example',body:'Situation:\nTask:\nAction:\nResult:'});saveState();renderCv();});
 $('#addEvBtn').addEventListener('click',()=>{const tag=prompt('Tag','RCA')||'';const text=prompt('Evidence bullet','')||'';if(!text)return;STATE.evidence.push({id:'ev-'+Date.now(),tag,text});saveState();renderCv();});
 $('#addTemplateBtn').addEventListener('click',()=>{STATE.templates.push({id:'tpl-'+Date.now(),name:'New template',body:''});saveState();renderAdmin();});
 $('#addDbsBtn').addEventListener('click',()=>{const id=(STATE.dbsLog.reduce((m,d)=>Math.max(m,Number(d.id)||0),0)||0)+1; const date=prompt('Date',TODAY_ISO); if(!date)return; STATE.dbsLog.push({id,date,employer:prompt('Employer','')||'',event:prompt('Event','')||'',notes:prompt('Notes','')||''});saveState();renderAdmin();});
 ['search','filterBand','filterWaiting','filterStage'].forEach(id=>{document.addEventListener('input',e=>{if(e.target.id===id)renderPipeline();});document.addEventListener('change',e=>{if(e.target.id===id)renderPipeline();});}); $('#actionFilter').addEventListener('change',renderActions); $('#recalcBands').addEventListener('click',()=>{renderActions();toast('Recalculated');}); $('#networkFilter').addEventListener('change',renderNetwork);
 $('#exportBtn').addEventListener('click',()=>{const blob=new Blob([JSON.stringify(STATE,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=el('a',{href:url,download:`burke_v12_snapshot_${TODAY_ISO}.json`});a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);toast('Exported');}); $('#importBtn').addEventListener('click',()=>$('#importFile').click()); $('#importFile').addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const s=JSON.parse(r.result);STATE=s.schemaVersion===SCHEMA_VERSION?s:migrateState(s);saveState();renderView($('section.view.active').id);toast('Imported');}catch(err){alert('Import failed: '+err.message);}};r.readAsText(f);}); $('#resetBtn').addEventListener('click',()=>{if(!confirm('Reset to seed data? Export first if you need the current state.'))return;STATE=clone(SEED);saveState();renderView($('section.view.active').id);toast('Reset');});
-$('#genWeekly').addEventListener('click',()=>{const rows=STATE.apps.map(a=>({a,d:decisionFor(a),due:daysUntil(a.followUpDue)})); const live=rows.filter(x=>!['Archive','Do not progress'].includes(x.d.band)); const overdue=rows.filter(x=>x.due!=null&&x.due<0&&x.d.band!=='Archive').sort((a,b)=>a.due-b.due); const next7=rows.filter(x=>!['Archive','Do not progress'].includes(x.d.band)&&x.due!=null&&x.due<=7).sort((a,b)=>a.due-b.due); const lines=[]; lines.push('BURKE ENGINEERING — WEEKLY REVIEW'); lines.push('Generated: '+TODAY.toDateString()); lines.push('Origin: '+STATE.settings.originPostcode); lines.push(''); lines.push('HEADLINE'); lines.push('  Live/watchlist roles: '+live.length); lines.push('  Overdue follow-ups: '+overdue.length); lines.push(''); lines.push('OVERDUE'); if(!overdue.length)lines.push('  None.'); overdue.forEach(x=>{lines.push(`  · ${x.a.company} — ${x.a.role} [${-x.due}d overdue]`); if(x.a.nextAction)lines.push('    → '+x.a.nextAction);}); lines.push(''); lines.push('NEXT 7 DAYS'); if(!next7.length)lines.push('  Nothing scheduled.'); next7.forEach(x=>{lines.push(`  · [${x.d.band}] ${x.a.company} — ${x.a.role} (${x.due<0?(-x.due+'d overdue'):x.due===0?'today':'in '+x.due+'d'})`); if(x.a.nextAction)lines.push('    → '+x.a.nextAction);}); lines.push(''); lines.push('NETWORK'); STATE.outreach.filter(o=>o.status!=='dead').forEach(o=>{const due=daysUntil(o.nextNudge);lines.push(`  · ${o.name} (${o.company}) [${o.status}, ${due==null?'no nudge':due<0?(-due+'d overdue'):'in '+due+'d'}] — ${o.ask}`);}); $('#weeklyReport').textContent=lines.join('\n');}); $('#copyWeekly').addEventListener('click',()=>safeCopy($('#weeklyReport').textContent).then(()=>toast('Copied')));
+$('#genWeekly').addEventListener('click',()=>{const rows=STATE.apps.map(a=>({a,d:decisionFor(a),due:daysUntil(a.followUpDue)})); const live=rows.filter(x=>!['Archive','Do not progress'].includes(x.d.band)); const overdue=rows.filter(x=>x.due!=null&&x.due<0&&x.d.band!=='Archive').sort((a,b)=>a.due-b.due); const next7=rows.filter(x=>!['Archive','Do not progress'].includes(x.d.band)&&x.due!=null&&x.due<=7).sort((a,b)=>a.due-b.due); const lines=[]; lines.push('BURKE ENGINEERING — WEEKLY REVIEW'); lines.push('Generated: '+TODAY.toDateString()); lines.push('Origin: '+STATE.settings.originPostcode); lines.push(''); lines.push('HEADLINE'); lines.push('  Live/watchlist roles: '+live.length); lines.push('  Overdue follow-ups: '+overdue.length); lines.push(''); lines.push('OVERDUE'); if(!overdue.length)lines.push('  None.'); overdue.forEach(x=>{lines.push(`  · ${x.a.company} — ${x.a.role} [${-x.due}d overdue]`); if(x.a.nextAction)lines.push('    → '+x.a.nextAction);}); lines.push(''); lines.push('NEXT 7 DAYS'); if(!next7.length)lines.push('  Nothing scheduled.'); next7.forEach(x=>{lines.push(`  · [${x.d.band}] ${x.a.company} — ${x.a.role} (${x.due<0?(-x.due+'d overdue'):x.due===0?'today':'in '+x.due+'d'})`); if(x.a.nextAction)lines.push('    → '+x.a.nextAction);}); lines.push(''); lines.push('NETWORK'); STATE.outreach.filter(o=>o.status!=='dead').forEach(o=>{const due=daysUntil(o.nextNudge);lines.push(`  · ${o.name} (${o.company}) [${o.status}, ${due==null?'no nudge':due<0?(-due+'d overdue'):'in '+due+'d'}] — ${o.ask}`);}); $('#weeklyReport').textContent=lines.join('
+');}); $('#copyWeekly').addEventListener('click',()=>safeCopy($('#weeklyReport').textContent).then(()=>toast('Copied')));
 renderDashboard();
 </script>
+
 <script>
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', function() {
-    navigator.serviceWorker.register('sw.js').then(function(reg) {
-      console.log('Service worker registered:', reg.scope);
-    }).catch(function(err) {
-      console.warn('Service worker registration failed:', err);
-    });
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js");
   });
 }
 </script>
