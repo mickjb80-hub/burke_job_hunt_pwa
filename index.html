@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#0b0d10" />
 <link rel="manifest" href="manifest.webmanifest" />
 <link rel="apple-touch-icon" href="icons/icon-180.png" />
-<title>CareerConsole v13.2</title>
+<title>CareerConsole v13.3</title>
 <style>
 :root{
   --bg:#0b0d10; --bg2:#111418; --card:#161a20; --card2:#1c2128;
@@ -180,9 +180,9 @@ nav.tab .badge{position:absolute;top:3px;left:50%;margin-left:5px;background:var
 <script>
 "use strict";
 /* ============================================================
-   CareerConsole v13.2 — profile-driven, reusable
+   CareerConsole v13.3 — application tracking, import and evidence control
    ============================================================ */
-const BUILD = "v13.2.0";
+const BUILD = "v13.3.0";
 const ROOT_KEY = "careerconsole_root_v13";
 const LEGACY_KEY = "careerconsole_v13";   // v13.0 single-workspace store
 const SCHEMA = 13;
@@ -232,7 +232,7 @@ function defaultRoot(){ return { appVersion:BUILD, activeProfileId:null, profile
 
 /* ---------- sample engineering profile (the importable example) ---------- */
 function sampleEngineeringProfile(){
-  const p = blankProfile("Michael Burke — current engineering search");
+  const p = blankProfile("Michael Burke — Live Tracker v13.3");
   p.meta = { name:"Michael Burke", postcode:"L35", location:"Liverpool / Prescot",
     targetRoles:"Fixed-site engineer, maintenance technician, depot technician, medical engineering / EBME, diagnostics / IVD technical support, rail depot engineering, automation, manufacturing reliability, workshop / product support",
     sectors:"Medical diagnostics, NHS/private medical engineering, rail depot maintenance, pharma manufacturing, automotive facilities, aerospace manufacturing, semiconductor",
@@ -897,6 +897,68 @@ function isOverdue(d){ return d && daysBetween(todayISO(),d)>0; }
 function isDueToday(d){ return d && d===todayISO(); }
 function isStale(j){ const ref=j.updated||j.dueDate; return ref && daysBetween(todayISO(),ref)>=S().staleThresholdDays; }
 
+function normKey(s){ return (s||"").toString().trim().toLowerCase().replace(/[^a-z0-9]+/g," ").trim(); }
+function jobKey(j){ return [normKey(j.company),normKey(j.role)].join("|"); }
+function findJobDuplicateIn(profile, incoming){
+  const ref=normKey(incoming.ref); const comp=normKey(incoming.company); const role=normKey(incoming.role);
+  return (profile.jobs||[]).find(j=>{
+    if(ref && normKey(j.ref)===ref) return true;
+    return normKey(j.company)===comp && normKey(j.role)===role;
+  });
+}
+function stageRank(s){ return {"Target":0,"Applied":1,"Screening":2,"Interview":3,"Offer":4,"Warm lead":1,"Watchlist":0,"Closed":9}[s] ?? 0; }
+function calcChaseDate(j){
+  if(!j.appliedDate || ["Closed"].includes(j.stage) || ["Archive","Reject"].includes(j.decision)) return "";
+  if(j.dueDate) return j.dueDate;
+  const d=new Date(j.appliedDate+"T00:00:00"); if(isNaN(d)) return "";
+  const days = j.stage==="Interview" ? 2 : (j.stage==="Screening" ? 5 : 7);
+  d.setDate(d.getDate()+days); return d.toISOString().slice(0,10);
+}
+function evidenceLine(j){
+  const parts=[]; if(j.appliedDate) parts.push("Applied "+fmtDate(j.appliedDate)); if(j.source) parts.push(j.source); if(j.ref) parts.push("Ref "+j.ref);
+  return parts.join(" · ");
+}
+function mergeJob(existing,incoming){
+  let updated=false;
+  const fill=["appliedDate","source","ref","evidenceUrl","siteAddress","salary","commuteMins","travelPct","mainRisk","priority"];
+  fill.forEach(k=>{ if((existing[k]==null||existing[k]==="") && incoming[k]){ existing[k]=incoming[k]; updated=true; } });
+  if(stageRank(incoming.stage)>stageRank(existing.stage)){ existing.stage=incoming.stage; updated=true; }
+  if(incoming.decision && (!existing.decision || existing.decision==="Qualify first" || existing.decision==="Keep warm")){ existing.decision=incoming.decision; updated=true; }
+  if(incoming.nextAction && (!existing.nextAction || existing.nextAction==="Archive")){ existing.nextAction=incoming.nextAction; updated=true; }
+  if(incoming.dueDate && (!existing.dueDate || incoming.appliedDate>=(existing.appliedDate||""))){ existing.dueDate=incoming.dueDate; updated=true; }
+  if(incoming.notes && !String(existing.notes||"").includes(incoming.notes.slice(0,40))){ existing.notes=(existing.notes?existing.notes+"\n\n":"")+incoming.notes; updated=true; }
+  if(updated) existing.updated=todayISO();
+  return updated;
+}
+function importLatestApplications(){
+  const p=P(); if(!p){ toast("No active profile"); return; }
+  const seed=sampleEngineeringProfile(); let added=0,updated=0,skipped=0;
+  seed.jobs.forEach(src=>{
+    const incoming={...src,id:uid(),log:src.log||[],contactId:"",updated:todayISO()};
+    const dup=findJobDuplicateIn(p,incoming);
+    if(dup){ if(mergeJob(dup,incoming)) updated++; else skipped++; }
+    else { p.jobs.push(incoming); added++; }
+  });
+  // Bring over useful CV/evidence bullets only if missing.
+  const haveEv=new Set((p.evidence||[]).map(e=>normKey(e.text)));
+  (seed.evidence||[]).forEach(e=>{ if(!haveEv.has(normKey(e.text))){ p.evidence.push({...e,id:uid(),updated:todayISO()}); haveEv.add(normKey(e.text)); } });
+  save(); closeSheet(); render(); sheet("Latest applications import",`<div class="okbox">Import complete.</div><div class="kv"><b>Added:</b> ${added}</div><div class="kv"><b>Updated:</b> ${updated}</div><div class="kv"><b>Skipped duplicates:</b> ${skipped}</div><p class="muted" style="margin-top:10px">Existing notes were preserved. Missing application evidence, references and statuses were added where available.</p><button class="btn primary full" style="margin-top:12px" onclick="closeSheet();jobFilter='newest';go('jobs')">View newest applications</button>`);
+}
+function csvCell(v){ v=v==null?"":String(v); return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; }
+function exportJobsCSV(){
+  const p=P(); const cols=["Company","Role","Location","Applied Date","Stage","Decision","Priority","Source","Reference","Evidence URL","Next Action","Chase/Due Date","Driving Required","Travel %","Commute Mins","Salary","Main Risk","Notes"];
+  const rows=[cols.join(",")].concat(p.jobs.map(j=>[
+    j.company,j.role,j.siteAddress,j.appliedDate,j.stage,j.decision||suggestDecision(j),j.priority,j.source,j.ref,j.evidenceUrl,j.nextAction,calcChaseDate(j),j.drivingRequired?"Yes":"No",j.travelPct,j.commuteMins,j.salary,j.mainRisk,j.notes
+  ].map(csvCell).join(",")));
+  downloadFile("careerconsole_jobs_"+todayISO()+".csv",rows.join("\n"),"text/csv"); toast("CSV exported");
+}
+function openApplicationLog(){
+  const p=P(); const apps=[...p.jobs].filter(j=>j.appliedDate || ["Applied","Screening","Interview","Offer","Closed"].includes(j.stage)).sort((a,b)=>(b.appliedDate||"").localeCompare(a.appliedDate||""));
+  const body=apps.length?apps.map(j=>`<div class="card tap" onclick="openJob('${j.id}')"><div class="row between"><div style="min-width:0"><b>${esc(j.company)}</b><div class="muted">${esc(j.role)}</div><div class="tiny">${esc(evidenceLine(j)||"Evidence missing")}</div></div><span class="pill ${j.stage==='Closed'?'red':j.stage==='Interview'?'green':'blue'}">${esc(j.stage)}</span></div><div class="row wrap" style="margin-top:8px;gap:6px"><span class="pill">Chase ${fmtDate(calcChaseDate(j))}</span>${j.priority?`<span class="pill ${j.priority==='High'?'amber':''}">${esc(j.priority)}</span>`:""}</div></div>`).join(""):'<div class="empty">No applications recorded.</div>';
+  sheet("Application log",`<p class="muted">Submitted applications sorted newest first.</p>${body}<div class="btnrow" style="margin-top:12px"><button class="btn" onclick="exportJobsCSV()">Export CSV</button></div>`);
+}
+
+
 /* ============================================================
    ACTION ENGINE
    ============================================================ */
@@ -1053,15 +1115,19 @@ function jobMini(j,tag){
 let jobFilter="all";
 function viewJobs(){
   const p=P(); let list=[...p.jobs]; const f=jobFilter;
-  if(f==="apply") list=list.filter(j=>(j.decision||suggestDecision(j)).startsWith("Apply"));
+  if(f==="newest") list=list.filter(j=>j.appliedDate).sort((a,b)=>(b.appliedDate||"").localeCompare(a.appliedDate||""));
+  else if(f==="applications") list=list.filter(j=>j.appliedDate || ["Applied","Screening","Interview","Offer","Closed"].includes(j.stage)).sort((a,b)=>(b.appliedDate||"").localeCompare(a.appliedDate||""));
+  else if(f==="chase") list=list.filter(j=>calcChaseDate(j) && daysBetween(todayISO(),calcChaseDate(j))>=0).sort((a,b)=>calcChaseDate(a).localeCompare(calcChaseDate(b)));
+  else if(f==="high") list=list.filter(j=>j.priority==="High" && !["Archive","Reject"].includes(j.decision));
+  else if(f==="apply") list=list.filter(j=>(j.decision||suggestDecision(j)).startsWith("Apply"));
   else if(f==="qualify") list=list.filter(j=>(j.decision||suggestDecision(j)).startsWith("Qualify"));
   else if(f==="overdue") list=list.filter(j=>isOverdue(j.dueDate));
   else if(f==="warm") list=list.filter(j=>(j.decision||suggestDecision(j)).startsWith("Keep"));
   else if(f==="archived") list=list.filter(j=>["Archive","Reject"].includes(j.decision));
-  else list=list.filter(j=>!["Archive","Reject"].includes(j.decision));
-  list.sort((a,b)=>scoreJob(b).score-scoreJob(a).score);
-  const chips=[["all","Best first"],["apply","Apply now"],["qualify","Qualify"],["overdue","Overdue"],["warm","Keep warm"],["archived","Archived"]];
-  let h=`<div class="row between"><h1>Jobs</h1><button class="btn primary sm" onclick="openJob()">+ Add</button></div>`;
+  else { list=list.filter(j=>!["Archive","Reject"].includes(j.decision)); list.sort((a,b)=>scoreJob(b).score-scoreJob(a).score); }
+  if(!["all","newest","applications","chase"].includes(f)) list.sort((a,b)=>scoreJob(b).score-scoreJob(a).score);
+  const chips=[["all","Best first"],["newest","Newest applied"],["applications","Applications"],["chase","Need chasing"],["high","High priority"],["apply","Apply now"],["qualify","Qualify"],["overdue","Overdue"],["warm","Keep warm"],["archived","Archived"]];
+  let h=`<div class="row between"><h1>Jobs</h1><div class="btnrow"><button class="btn sm" onclick="openApplicationLog()">Application log</button><button class="btn primary sm" onclick="openJob()">+ Add</button></div></div>`;
   h+=`<div class="chips">`+chips.map(c=>`<button class="chip ${jobFilter===c[0]?'on':''}" onclick="setJobFilter('${c[0]}')">${c[1]}</button>`).join("")+`</div>`;
   if(!list.length) return h+`<div class="card"><div class="empty">No jobs in this view.</div></div>`;
   h+=`<div class="grid cols-2">`+list.map(jobCard).join("")+`</div>`; return h;
@@ -1071,10 +1137,10 @@ function jobCard(j){
   const {score}=scoreJob(j); const dec=j.decision||suggestDecision(j); const c=contactForJob(j);
   const cm=Number(j.commuteMins||0); const cmDot=cm<=60?"green":cm<=S().maxJourneyMins?"amber":"red";
   const driveFlag=(j.drivingRequired&&!S().drivingAllowed);
-  return `<div class="card tap" onclick="openJob('${j.id}')"><div class="row between"><div style="min-width:0"><div style="font-weight:700;font-size:16px">${esc(j.company)}</div><div class="muted">${esc(j.role)}</div>${(j.appliedDate||j.source||j.ref)?`<div class="tiny">${j.appliedDate?"Applied "+fmtDate(j.appliedDate):""}${j.source?" · "+esc(j.source):""}${j.ref?" · Ref "+esc(j.ref):""}</div>`:""}</div><div class="score">${score}<small>/10</small></div></div>
+  return `<div class="card tap" onclick="openJob('${j.id}')"><div class="row between"><div style="min-width:0"><div style="font-weight:700;font-size:16px">${esc(j.company)}</div><div class="muted">${esc(j.role)}</div>${(j.appliedDate||j.source||j.ref)?`<div class="tiny">${esc(evidenceLine(j))}</div>`:""}</div><div class="score">${score}<small>/10</small></div></div>
     <div class="row wrap" style="margin-top:9px;gap:6px"><span class="pill ${dec.startsWith('Apply')?'green':dec.startsWith('Reject')?'red':'blue'}">${esc(dec)}</span>${j.priority?`<span class="pill ${j.priority==='High'?'amber':j.priority==='Low'?'':'blue'}">${esc(j.priority)}</span>`:""}${driveFlag?`<span class="pill red">Driving</span>`:""}<span class="pill"><span class="dot ${cmDot}"></span>${cm?cm+'m':'commute ?'}</span><span class="pill">${money(j.salary)}</span></div>
     <div class="divider"></div><div class="kv"><b>Next:</b> ${esc(j.nextAction||"—")}</div>
-    <div class="row between" style="margin-top:5px"><span class="tiny">Due ${fmtDate(j.dueDate)} ${isOverdue(j.dueDate)?'· <span style="color:#ff7a72">overdue</span>':''}</span>${c?`<span class="tiny">${esc(c.name)}</span>`:`<span class="tiny" style="color:#ff7a72">no contact</span>`}</div>
+    <div class="row between" style="margin-top:5px"><span class="tiny">Chase ${fmtDate(calcChaseDate(j))} ${isOverdue(calcChaseDate(j))?'· <span style="color:#ff7a72">due</span>':''}</span>${c?`<span class="tiny">${esc(c.name)}</span>`:`<span class="tiny" style="color:#ff7a72">no contact</span>`}</div>${j.evidenceUrl?`<div class="tiny" style="margin-top:5px"><a href="${esc(j.evidenceUrl)}" target="_blank" onclick="event.stopPropagation()">Open evidence</a></div>`:""}
     ${j.mainRisk?`<div class="reasons"><span class="dot amber"></span> Risk: ${esc(j.mainRisk)}</div>`:""}</div>`;
 }
 function openJob(id){
@@ -1277,11 +1343,12 @@ function viewMore(){
     <div class="card tap" onclick="openProfiles()"><div class="row between"><b>Switch / manage profiles</b><span class="pill">${root.profiles.length} saved</span></div></div>`;
   h+=`<h2 class="sec">Review &amp; reminders</h2>
     <div class="card tap" onclick="openWeekly()"><div class="row between"><b>Weekly review</b><span class="pill blue">Open</span></div></div>
+    <div class="card tap" onclick="openApplicationLog()"><div class="row between"><b>Application log</b><span class="pill blue">Newest</span></div><div class="muted" style="margin-top:5px">Submitted roles, evidence, chase dates and statuses.</div></div>
     <div class="card tap" onclick="exportICS()"><div class="row between"><b>Download calendar reminders (.ics)</b><span class="pill">↓</span></div><div class="muted" style="margin-top:5px">All job due dates as calendar events.</div></div>`;
   h+=`<h2 class="sec">Admin</h2><div class="card">
-      <div class="btnrow"><button class="btn" onclick="backupData()">Backup my data</button><button class="btn" onclick="$('#restoreFile').click()">Restore from backup</button><button class="btn" onclick="exportForAI()">Export for ChatGPT/Claude review</button></div>
+      <div class="btnrow"><button class="btn" onclick="backupData()">Backup my data</button><button class="btn" onclick="$('#restoreFile').click()">Restore from backup</button><button class="btn" onclick="exportForAI()">Export for ChatGPT/Claude review</button><button class="btn" onclick="exportJobsCSV()">Export jobs CSV</button></div>
       <div class="divider"></div>
-      <div class="btnrow"><button class="btn ghost" onclick="exportProfile()">Export this profile</button><button class="btn ghost" onclick="$('#profImport').click()">Import a profile</button><button class="btn ghost" onclick="$('#v12File').click()">Import v12 JSON</button></div>
+      <div class="btnrow"><button class="btn primary" onclick="importLatestApplications()">Import latest verified applications</button><button class="btn ghost" onclick="exportProfile()">Export this profile</button><button class="btn ghost" onclick="$('#profImport').click()">Import a profile</button><button class="btn ghost" onclick="$('#v12File').click()">Import v12 JSON</button></div>
       <input type="file" id="restoreFile" accept=".json,application/json" class="hidden" onchange="smartImport(event)">
       <input type="file" id="profImport" accept=".json,application/json" class="hidden" onchange="smartImport(event)">
       <input type="file" id="v12File" accept=".json,application/json" class="hidden" onchange="importV12(event)">
@@ -1332,10 +1399,10 @@ function saveProfileSetup(){
 function openProfiles(){
   if(!P()){ renderWelcome(); return; }
   const body=`<p class="muted">Switch profile, or add another (for a different person or job search).</p>
-    ${root.profiles.map(p=>`<div class="card ${p.id===root.activeProfileId?'':'tap'}" ${p.id===root.activeProfileId?'':`onclick="switchProfile('${p.id}')"`}>
-      <div class="row between"><div><b>${esc(p.meta.name||"Unnamed")}</b><div class="muted">${p.jobs.length} jobs · ${p.contacts.length} contacts</div></div>
-      ${p.id===root.activeProfileId?'<span class="pill green">Active</span>':'<span class="pill blue">Switch</span>'}</div></div>`).join("")}
-    <div class="btnrow" style="margin-top:12px"><button class="btn" onclick="addProfileFlow()">+ New profile</button><button class="btn ghost" onclick="useSampleFromMenu()">+ Sample profile</button></div>
+    ${root.profiles.map(p=>{ const latest=(p.jobs||[]).map(j=>j.updated||j.appliedDate||"").sort().pop()||""; return `<div class="card ${p.id===root.activeProfileId?'':'tap'}" ${p.id===root.activeProfileId?'':`onclick="switchProfile('${p.id}')"`}>
+      <div class="row between"><div><b>${esc(p.meta.name||"Unnamed")}</b><div class="muted">${p.jobs.length} jobs · ${p.contacts.length} contacts · updated ${fmtDate(latest)}</div></div>
+      ${p.id===root.activeProfileId?'<span class="pill green">Active</span>':'<span class="pill blue">Switch</span>'}</div></div>`}).join("")}
+    <div class="btnrow" style="margin-top:12px"><button class="btn" onclick="addProfileFlow()">+ New profile</button><button class="btn primary" onclick="importLatestApplications()">Import latest applications</button><button class="btn ghost" onclick="useSampleFromMenu()">+ New sample profile</button></div>
     <div class="divider"></div>
     <button class="btn danger full" onclick="deleteActiveProfile()">Delete active profile</button>`;
   sheet("Profiles",body);

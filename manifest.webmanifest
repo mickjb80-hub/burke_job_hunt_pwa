@@ -1,7 +1,7 @@
 {
-  "name": "CareerConsole v13.2",
+  "name": "CareerConsole v13.3",
   "short_name": "CareerConsole",
-  "description": "Engineering job-search operations console (v13.2).",
+  "description": "Engineering job-search operations console (v13.3).",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

@@ -1,8 +1,20 @@
-CareerConsole v13.2
+CareerConsole v13.3
 ===================
 A profile-driven, reusable job-search console PWA.
-Build: v13.2.0  |  Schema: 13
+Build: v13.3.0  |  Schema: 13
 
+
+WHAT CHANGED FROM v13.2
+-----------------------
+- Added Import latest verified applications: merges missing jobs into the active profile without duplicating existing jobs.
+- Added duplicate-safe matching by vacancy reference or employer+role.
+- Added Application Log sorted by newest applied date.
+- Added Jobs filters: Newest applied, Applications, Need chasing, High priority.
+- Added chase-date calculation for applied/screening/interview roles.
+- Added CSV export for Excel.
+- Job cards now show chase dates and evidence links where available.
+- Profile manager now shows last profile update and includes an import-latest action.
+- Cache bumped to careerconsole-v13-3-0.
 
 WHAT CHANGED FROM v13.1
 -----------------------
@@ -10,7 +22,7 @@ WHAT CHANGED FROM v13.1
 - Added job fields for Applied Date, Source/Platform, Reference, Evidence URL and Priority.
 - Job cards now show application evidence metadata, not just company/role/score.
 - Export-for-AI now includes application date, source, reference and priority for each job.
-- Cache bumped to careerconsole-v13-2-0 so GitHub Pages does not serve the old build.
+- Cache bumped to careerconsole-v13-3-0 so GitHub Pages does not serve the old build.
 
 WHAT CHANGED FROM v13.0
 -----------------------
@@ -59,7 +71,7 @@ WHY THE CACHE WON'T GET STUCK
 -----------------------------
 The service worker serves the app shell network-first, so a new deploy is always
 fetched fresh when online. Each release bumps the cache name
-(careerconsole-v13-2-0) which purges old caches. Build version shows top-right
+(careerconsole-v13-3-0) which purges old caches. Build version shows top-right
 and under More > Admin. When you ship a new build, change BUILD in index.html
 AND the CACHE string in sw.js.
 
@@ -78,7 +90,7 @@ BRINGING DATA ACROSS
   Maps common v12 field names; originals preserved under "_raw". Spot-check a few.
 - A v13.0 backup or a single-profile export: use "Restore from backup" or
   "Import a profile". The app detects the shape automatically.
-- Full v13.1 backup (all profiles): "Restore from backup" replaces everything.
+- Full v13.1/v13.2 backup (all profiles): "Restore from backup" replaces everything.
 
 DATA SAFETY
 -----------
