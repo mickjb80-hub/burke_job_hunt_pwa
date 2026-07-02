@@ -1,7 +1,7 @@
 {
-  "name": "CareerConsole v14.2",
+  "name": "CareerConsole v15.0.1",
   "short_name": "CareerConsole",
-  "description": "Engineering job-search operations console (v14.2.0).",
+  "description": "Engineering job-search operations console (v15.0.1).",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
