@@ -1,52 +1,38 @@
-CareerConsole v13.5 — iPhone Comfort Plus
-==========================================
-A profile-driven job-search console PWA, tuned for iPhone daily use.
-Build: v13.5.0  |  Schema: 13
+CareerConsole v14.2 — Privacy Split + Weekly Activity Summaries
 
-WHAT CHANGED FROM v13.4
------------------------
-- Larger base text across the app for iPhone readability.
-- Larger tap targets: main buttons are now designed around 44–48px+ touch height.
-- Larger job cards with more spacing and clearer metadata.
-- Bigger bottom navigation labels and touch areas.
-- Larger chips / filters so they are easier to tap.
-- Larger sheets, close buttons, form fields, warning boxes and import-result messages.
-- Mobile layout rules: cramped two-column areas collapse more cleanly on iPhone.
-- Version cleanup: title, manifest and service worker all now identify v13.5.
-- Cache bumped to careerconsole-v13-5-0.
+This is the generic public build. It contains no personal application history and no real recruiter email addresses.
 
-WHAT CHANGED FROM v13.3
------------------------
-- Search bars on Jobs and Contacts.
-- Phone back / swipe-back closes sheets first instead of exiting immediately.
-- App remembers last tab and filter during the session.
-- Backup reminder added.
-- Pipeline stats strip added on Today.
+What changed in v14.2:
+- Personal job/application seeds removed from index.html.
+- Generic fictional demo profile only.
+- Real data should live in localStorage and private JSON backups, not in the public GitHub Pages file.
+- Added Weekly Summary export with three profile-driven styles: UC journal, Personal review and Recruiter update.
+- Added nearby towns field in profile setup to improve pasted-advert location parsing outside the North West.
+- Kept v13.9.1 parser fixes: driving-negation guard, hourly-rate handling, role-title cleanup, transit link correction and badge permission button.
 
-WHAT CHANGED FROM v13.2
------------------------
-- Import latest verified applications into the active profile.
-- Duplicate-safe matching by reference or employer + role.
-- Application Log sorted newest first.
-- Jobs filters: Newest applied, Applications, Need chasing, High priority.
-- Chase-date calculation and CSV export for Excel.
 
-UPLOAD TO GITHUB PAGES
-----------------------
-Upload the files inside this zip, not the zip itself:
+Additional v14.1 fixes retained:
+- Weekly summaries now include Actions completed this week from job logs and contact timelines.
+- UC wording now separates completed activity from currently due follow-ups.
+- Generic fallback next-step wording now follows the profile work preference instead of assuming fixed-site roles.
+- Added .gitignore to reduce the risk of private JSON backups being uploaded accidentally.
+
+Upload these files to GitHub Pages:
 - index.html
 - manifest.webmanifest
 - sw.js
 - README.txt
 
-Optional:
-- icons/
-- icons-alt-mycareer/
-- make_icons.py
+Do not upload private profile JSON backups to the public repo. Import them inside the app from your own device.
 
-After upload, GitHub should show "now" beside index.html, manifest.webmanifest, sw.js and README.txt.
-Then open the app in Safari and refresh twice. Top-right should show v13.5.0.
+After upload, refresh Safari twice and confirm v14.2.0 in the top-right build badge.
 
-IMPORTANT
----------
-CareerConsole stores your profile data in the browser/PWA local storage. Updating the app files does not automatically delete or replace your saved jobs. Use More -> Quick actions -> Import latest applications to merge verified application updates into your active profile.
+
+Additional v14.2 fixes:
+- Weekly outcome lines now print the closed decision rather than the job stage.
+- Job cards are visually quieter: company, role, score, decision and only true risk/due pills are shown.
+- Salary and commute detail stay in the job sheet/CSV instead of crowding every card.
+- Score colour now carries quality signal: green high, amber medium, grey low.
+- Jobs header now prioritises Paste advert and + Add; Application log remains available from More/Quick actions and the Applications filter.
+
+After upload, refresh Safari twice and confirm v14.2.0 in the top-right build badge.

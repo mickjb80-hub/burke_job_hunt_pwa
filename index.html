@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#0b0d10" />
 <link rel="manifest" href="manifest.webmanifest" />
 <link rel="apple-touch-icon" href="icons/icon-180.png" />
-<title>CareerConsole v13.5</title>
+<title>CareerConsole v14.2</title>
 <style>
 :root{
   --bg:#0b0d10; --bg2:#111418; --card:#161a20; --card2:#1c2128;
@@ -78,6 +78,7 @@ h2.sec{font-size:15px;font-weight:800;text-transform:uppercase;letter-spacing:.8
 .dot.green{background:var(--green)} .dot.amber{background:var(--amber)} .dot.red{background:var(--red)} .dot.grey{background:var(--txt3)}
 .score{font-weight:850;font-size:23px;font-variant-numeric:tabular-nums}
 .score small{font-size:13px;color:var(--txt3);font-weight:700}
+.score.good{color:var(--green)} .score.warn{color:var(--amber)} .score.poor{color:var(--txt3)}
 
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;border-radius:14px;
   padding:13px 17px;min-height:48px;font-weight:750;font-size:16.5px;border:1px solid var(--line2);background:var(--card2);color:var(--txt)}
@@ -128,7 +129,8 @@ nav.tab .badge{position:absolute;top:3px;left:50%;margin-left:5px;background:var
 .closex{background:var(--card2);border:1px solid var(--line2);color:var(--txt2);width:44px;height:44px;border-radius:50%;font-size:22px;line-height:1}
 
 #toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--nav-h) + 18px + var(--safe-b));background:#23282f;border:1px solid var(--line2);color:var(--txt);padding:14px 18px;border-radius:16px;font-size:16px;z-index:120;opacity:0;transition:opacity .2s;pointer-events:none;max-width:92vw}
-#toast.show{opacity:1}
+#toast.show{opacity:1;pointer-events:auto}
+#toast .undoBtn{margin-left:12px;border:0;background:transparent;color:#7dd3fc;font-weight:800;font-size:16px}
 
 .empty{text-align:center;color:var(--txt3);font-size:16px;padding:36px 12px}
 .divider{height:1px;background:var(--line);margin:14px 0}
@@ -166,6 +168,33 @@ input[type="search"]::-webkit-search-cancel-button{-webkit-appearance:none}
   input,select,textarea{min-height:48px;border-radius:14px}
   textarea{min-height:118px}
 }
+
+/* Motion and polish */
+@keyframes ccFadeIn{from{opacity:0}to{opacity:1}}
+@keyframes ccSheetUp{from{transform:translateY(22px);opacity:.92}to{transform:translateY(0);opacity:1}}
+@keyframes ccViewIn{from{opacity:.72;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+.sheet-wrap{animation:ccFadeIn .18s ease-out}
+.sheet{animation:ccSheetUp .20s cubic-bezier(.2,.8,.2,1);will-change:transform}
+main.view-enter{animation:ccViewIn .18s ease-out}
+.btn,.chip,.card.tap{transition:transform .12s ease,background .16s ease,border-color .16s ease,opacity .16s ease}
+.btn:active,.chip:active,.card.tap:active{transform:scale(.985)}
+.sheet.dragging{transition:none!important}
+@media (prefers-reduced-motion: reduce){*,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;scroll-behavior:auto!important}}
+@media (prefers-color-scheme: light){
+  :root{
+    --bg:#f6f7f9; --bg2:#ffffff; --card:#ffffff; --card2:#eef1f5;
+    --line:#d8dde5; --line2:#c8d0da;
+    --txt:#111827; --txt2:#4b5563; --txt3:#6b7280;
+    --blue:#007aff; --blue-dim:#007aff14; --blue-line:#007aff44;
+    --green:#0a8f3c; --amber:#b77900; --red:#d92d20; --red-dim:#d92d2014;
+  }
+  header{background:rgba(246,247,249,.88)}
+  nav.tab{background:rgba(255,255,255,.92)}
+  #toast{background:#ffffff;color:var(--txt);box-shadow:0 10px 28px rgba(16,24,40,.16)}
+  .sheet-wrap{background:rgba(15,23,42,.28)}
+  .pill.blue{color:#005bbf}.pill.green{color:#087b34}.pill.amber{color:#9a6700}.pill.red{color:#b42318}
+}
+
 </style>
 </head>
 <body>
@@ -197,9 +226,9 @@ input[type="search"]::-webkit-search-cancel-button{-webkit-appearance:none}
 <script>
 "use strict";
 /* ============================================================
-   CareerConsole v13.3 — application tracking, import and evidence control
+   CareerConsole v14.2 — privacy split + weekly activity summaries
    ============================================================ */
-const BUILD = "v13.5.0";
+const BUILD = "v14.2.0";
 const ROOT_KEY = "careerconsole_root_v13";
 const LEGACY_KEY = "careerconsole_v13";   // v13.0 single-workspace store
 const SCHEMA = 13;
@@ -213,9 +242,26 @@ function daysBetween(a,b){ return Math.round((new Date(a)-new Date(b))/86400000)
 function fmtDate(d){ if(!d) return "—"; const x=new Date(d+"T00:00:00"); if(isNaN(x)) return d;
   return x.toLocaleDateString("en-GB",{day:"numeric",month:"short"}); }
 function toast(m){ const t=$("#toast"); t.textContent=m; t.classList.add("show"); clearTimeout(t._t);
-  t._t=setTimeout(()=>t.classList.remove("show"),2200); }
+  t._t=setTimeout(()=>t.classList.remove("show"),2400); }
+let undoBuffer=null;
+function toastUndo(m,fn){ const t=$("#toast"); t.innerHTML=`${esc(m)} <button class="undoBtn" onclick="runUndo()">Undo</button>`; undoBuffer=fn; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>{t.classList.remove("show"); undoBuffer=null;},10000); }
+function runUndo(){ if(!undoBuffer)return; const fn=undoBuffer; undoBuffer=null; const t=$("#toast"); t.classList.remove("show"); fn(); }
 function money(n){ if(n==null||n==="") return "—"; const v=Number(n); return isNaN(v)?String(n):"£"+v.toLocaleString("en-GB"); }
 function lines(s){ return (s||"").split(/\n|,/).map(x=>x.trim()).filter(Boolean); }
+
+function addDaysISO(d,n){ const x=new Date((d||todayISO())+"T00:00:00"); if(isNaN(x)) return ""; x.setDate(x.getDate()+n); return x.toISOString().slice(0,10); }
+function defaultNextTouch(status,base=todayISO()){
+  if(status==="Planned"||status==="To contact") return base;
+  if(status==="Sent / awaiting reply") return addDaysISO(base,5);
+  if(status==="Replied / live"||status==="Active conversation") return addDaysISO(base,3);
+  if(status==="Interview / process") return addDaysISO(base,2);
+  if(status==="Dormant") return addDaysISO(base,30);
+  return "";
+}
+function isContactOverdue(c){ return !!(c.nextTouchDate && !["Dead / archive","Closed / not useful","Archived"].includes(c.status) && daysBetween(todayISO(),c.nextTouchDate)>0); }
+function isContactDueToday(c){ return !!(c.nextTouchDate && daysBetween(todayISO(),c.nextTouchDate)===0); }
+function contactActionUrl(kind,val){ if(!val) return "#"; if(kind==="email") return "mailto:"+encodeURIComponent(val); if(kind==="phone") return "tel:"+String(val).replace(/\s+/g,""); return val.startsWith("http")?val:"https://"+val; }
+
 
 const DECISIONS = ["Apply now","Qualify first","Follow up","Prepare interview","Keep warm","Archive","Reject"];
 const STAGES = ["Target","Applied","Screening","Interview","Offer","Warm lead","Watchlist","Closed"];
@@ -238,7 +284,7 @@ function defaultMeta(name){
     workPref:"Fixed-site / onsite",
     keySkills:"", keyExperience:"", qualifications:"",
     restrictions:"", tone:"Direct", disclosureNotes:"",
-    staleThresholdDays:10 };
+    staleThresholdDays:10, weeklySummaryStyle:"Personal review", nearbyTowns:"" };
 }
 function blankProfile(name){
   return { id:uid(), meta:defaultMeta(name||"My profile"),
@@ -249,584 +295,29 @@ function defaultRoot(){ return { appVersion:BUILD, activeProfileId:null, profile
 
 /* ---------- sample engineering profile (the importable example) ---------- */
 function sampleEngineeringProfile(){
-  const p = blankProfile("Michael Burke — Live Tracker v13.3");
-  p.meta = { name:"Michael Burke", postcode:"L35", location:"Liverpool / Prescot",
-    targetRoles:"Fixed-site engineer, maintenance technician, depot technician, medical engineering / EBME, diagnostics / IVD technical support, rail depot engineering, automation, manufacturing reliability, workshop / product support",
-    sectors:"Medical diagnostics, NHS/private medical engineering, rail depot maintenance, pharma manufacturing, automotive facilities, aerospace manufacturing, semiconductor",
+  const p = blankProfile("Demo Engineer — Generic sample");
+  p.meta = { name:"Demo Engineer", postcode:"", location:"",
+    targetRoles:"Maintenance engineer, engineering technician, workshop engineer, depot technician, manufacturing engineer, medical engineering technician",
+    sectors:"Manufacturing, medical devices, rail, aerospace, laboratory automation, pharma, facilities maintenance",
     salaryMin:35000, salaryPref:42000, commuteMax:90, drivingAvailable:false, travelMax:25,
     workPref:"Fixed-site / onsite",
-    keySkills:"Abbott Alinity m, m2000rt/m2000sp, Sysmex XN/CS, RR Mechatronics, RCA, log-file analysis, PPM, calibration, regulated documentation, electro-mechanical troubleshooting, hydraulics, pneumatics, safety-critical maintenance",
-    keyExperience:"Medical diagnostic field service experience on PCR, haematology and coagulation platforms, plus Royal Navy submarine engineering. Strong fixed-site fit where the role values fault diagnosis, reliability, procedure, documentation and regulated equipment rather than regular driving.",
-    qualifications:"Royal Navy engineering background; Abbott and Sysmex platform training; CMI Level 3 First Line Management; Level 3 engineering maintenance qualifications.",
-    restrictions:"No regular driving. Prioritise fixed-site, depot, workshop, manufacturing, NHS/private medical engineering and product-support roles. Qualify DBS/disclosure per role using separate prepared disclosure statement.",
-    tone:"Direct", disclosureNotes:"Prepared written disclosure statement held separately. Do not volunteer unnecessary detail; qualify per role.",
-    staleThresholdDays:10 };
+    keySkills:"Electro-mechanical fault finding, PPM, RCA, regulated documentation, hydraulics, pneumatics, automation, safety-critical maintenance",
+    keyExperience:"Engineering maintenance experience in regulated or safety-critical environments, with strong fault diagnosis and documentation discipline.",
+    qualifications:"Add your relevant engineering qualifications, platform training and leadership courses here.",
+    restrictions:"Add deal-breakers here, for example no routine driving, max commute, shift limits or travel limits.",
+    tone:"Direct", disclosureNotes:"", staleThresholdDays:10, weeklySummaryStyle:"Personal review", nearbyTowns:"" };
   const rawJobs = [
-    {
-        "company": "Airbus / Impellam STEM",
-        "role": "Skilled Aircraft Fitter, Engineering / Manufacturing Experience",
-        "siteAddress": "Broughton area",
-        "salary": "",
-        "commuteMins": 65,
-        "drivingRequired": false,
-        "travelPct": 0,
-        "techFit": 7,
-        "wlb": 7,
-        "stage": "Applied",
-        "decision": "Follow up",
-        "nextAction": "Monitor Impellam / Indeed response and prepare aircraft-fitter examples",
-        "dueDate": "2026-07-08",
-        "mainRisk": "Confirm site, shift pattern, contract type and whether any driving is required",
-        "notes": "Email evidence: Indeed application and Impellam confirmation. Corrected from Bromborough to likely Broughton.",
-        "waiting": "them",
-        "appliedDate": "2026-07-01",
-        "source": "Indeed / Impellam STEM brands",
-        "ref": "BBBH171358",
-        "priority": "High"
-    },
-    {
-        "company": "Jaguar Land Rover",
-        "role": "Maintenance Technician",
-        "siteAddress": "Halewood",
-        "salary": "",
-        "commuteMins": 30,
-        "drivingRequired": false,
-        "travelPct": 0,
-        "techFit": 8,
-        "wlb": 7,
-        "stage": "Applied",
-        "decision": "Follow up",
-        "nextAction": "Prepare fixed-site maintenance examples and monitor recruiter outcome",
-        "dueDate": "2026-07-07",
-        "mainRisk": "Confirm shift pattern, salary band and no driving requirement",
-        "notes": "Application received and with recruiter.",
-        "waiting": "them",
-        "appliedDate": "2026-06-30",
-        "source": "JLR Careers",
-        "ref": "",
-        "priority": "High"
-    },
-    {
-        "company": "CSL",
-        "role": "Role title to verify",
-        "siteAddress": "Speke / Liverpool area",
-        "salary": "",
-        "commuteMins": 35,
-        "drivingRequired": false,
-        "travelPct": 0,
-        "techFit": 7,
-        "wlb": 7,
-        "stage": "Applied",
-        "decision": "Qualify first",
-        "nextAction": "Open confirmation email and capture exact role title",
-        "dueDate": "2026-07-05",
-        "mainRisk": "Role title not visible in email snippet",
-        "notes": "Workday confirmation received 23 Jun 2026.",
-        "waiting": "them",
-        "appliedDate": "2026-06-23",
-        "source": "Workday / CSL Jobs",
-        "ref": "",
-        "priority": "High"
-    },
-    {
-        "company": "IrishJobs",
-        "role": "Manufacturing Process Specialist, Biologics (12M)",
-        "siteAddress": "Cork",
-        "salary": "",
-        "commuteMins": 0,
-        "drivingRequired": false,
-        "travelPct": 0,
-        "techFit": 6,
-        "wlb": 5,
-        "stage": "Applied",
-        "decision": "Keep warm",
-        "nextAction": "Only progress if relocation/package makes sense",
-        "dueDate": "2026-07-09",
-        "mainRisk": "Relocation to Cork and exact fit",
-        "notes": "Application sent via IrishJobs.",
-        "waiting": "them",
-        "appliedDate": "2026-06-22",
-        "source": "IrishJobs",
-        "ref": "",
-        "priority": "Low"
-    },
-    {
-        "company": "Brightwater Recruitment",
-        "role": "Engineering Technician - Medical Device",
-        "siteAddress": "Dublin, Ireland",
-        "salary": "",
-        "commuteMins": 0,
-        "drivingRequired": false,
-        "travelPct": 0,
-        "techFit": 8,
-        "wlb": 5,
-        "stage": "Closed",
-        "decision": "Reject",
-        "nextAction": "Archive",
-        "dueDate": "",
-        "mainRisk": "Not progressed",
-        "notes": "IrishJobs application sent 6 Jun 2026; rejection received 8 Jun 2026.",
-        "waiting": "them",
-        "appliedDate": "2026-06-06",
-        "source": "IrishJobs / Brightwater",
-        "ref": "",
-        "priority": "Low"
-    },
-    {
-        "company": "Amazon",
-        "role": "Reliability Maintenance Engineering Technician",
-        "siteAddress": "Warrington Fulfilment Centre",
-        "salary": "",
-        "commuteMins": 45,
-        "drivingRequired": false,
-        "travelPct": 0,
-        "techFit": 7,
-        "wlb": 6,
-        "stage": "Closed",
-        "decision": "Reject",
-        "nextAction": "Archive",
-        "dueDate": "",
-        "mainRisk": "Unsuccessful after assessment / review",
-        "notes": "Application ID 10427040. Assessment requested 24 May; unsuccessful 5 Jun.",
-        "waiting": "them",
-        "appliedDate": "2026-05-24",
-        "source": "Amazon Jobs",
-        "ref": "10427040",
-        "priority": "Low"
-    },
-    {
-        "company": "Resonant Clinical",
-        "role": "Role title to verify",
-        "siteAddress": "",
-        "salary": "",
-        "commuteMins": "",
-        "drivingRequired": false,
-        "travelPct": 0,
-        "techFit": 7,
-        "wlb": 6,
-        "stage": "Applied",
-        "decision": "Qualify first",
-        "nextAction": "Open Workday email and capture exact role title",
-        "dueDate": "2026-07-05",
-        "mainRisk": "Role title missing from snippet",
-        "notes": "Workday thank-you confirmation received 23 May 2026.",
-        "waiting": "them",
-        "appliedDate": "2026-05-23",
-        "source": "Workday / Resonant Clinical",
-        "ref": "",
-        "priority": "Medium"
-    },
-    {
-        "company": "University of Salford",
-        "role": "Senior Technician, Research Infrastructure",
-        "siteAddress": "Salford",
-        "salary": "",
-        "commuteMins": 75,
-        "drivingRequired": false,
-        "travelPct": 0,
-        "techFit": 7,
-        "wlb": 7,
-        "stage": "Screening",
-        "decision": "Follow up",
-        "nextAction": "Check portal/status and prepare research-infrastructure maintenance examples",
-        "dueDate": "2026-07-06",
-        "mainRisk": "Commute and exact technical fit",
-        "notes": "Application under review. Ref 751.",
-        "waiting": "them",
-        "appliedDate": "2026-05-16",
-        "source": "University of Salford careers",
-        "ref": "751",
-        "priority": "Medium"
-    },
-    {
-        "company": "Alder Hey Children’s NHS Foundation Trust",
-        "role": "Specialist Medical Engineer",
-        "siteAddress": "Liverpool",
-        "salary": "",
-        "commuteMins": 35,
-        "drivingRequired": false,
-        "travelPct": 0,
-        "techFit": 8,
-        "wlb": 7,
-        "stage": "Closed",
-        "decision": "Reject",
-        "nextAction": "Archive",
-        "dueDate": "",
-        "mainRisk": "Not progressed",
-        "notes": "Vacancy 411-SUR-26-7928135. Not progressed.",
-        "waiting": "them",
-        "appliedDate": "2026-05-12",
-        "source": "Trac Jobs",
-        "ref": "411-SUR-26-7928135",
-        "priority": "Low"
-    },
-    {
-        "company": "Sonova",
-        "role": "Hearing Aid Technician, 15-month contract",
-        "siteAddress": "",
-        "salary": "",
-        "commuteMins": "",
-        "drivingRequired": false,
-        "travelPct": 0,
-        "techFit": 6,
-        "wlb": 6,
-        "stage": "Applied",
-        "decision": "Keep warm",
-        "nextAction": "Monitor response; qualify salary/location",
-        "dueDate": "2026-07-09",
-        "mainRisk": "Contract length and exact location",
-        "notes": "Application received 9 May 2026.",
-        "waiting": "them",
-        "appliedDate": "2026-05-09",
-        "source": "SuccessFactors / Sonova",
-        "ref": "162523",
-        "priority": "Medium"
-    },
-    {
-        "company": "Northern",
-        "role": "Skilled Train Maintainer",
-        "siteAddress": "Allerton",
-        "salary": "",
-        "commuteMins": 35,
-        "drivingRequired": false,
-        "travelPct": 0,
-        "techFit": 8,
-        "wlb": 7,
-        "stage": "Screening",
-        "decision": "Follow up",
-        "nextAction": "Prepare depot maintenance examples and check application status",
-        "dueDate": "2026-07-05",
-        "mainRisk": "Rail-specific experience and shifts",
-        "notes": "Application received and screened by Talent Acquisition.",
-        "waiting": "them",
-        "appliedDate": "2026-05-08",
-        "source": "Northern careers",
-        "ref": "",
-        "priority": "High"
-    },
-    {
-        "company": "CAF Rail UK",
-        "role": "Technician",
-        "siteAddress": "Allerton",
-        "salary": "",
-        "commuteMins": 35,
-        "drivingRequired": false,
-        "travelPct": 0,
-        "techFit": 8,
-        "wlb": 7,
-        "stage": "Interview",
-        "decision": "Prepare interview",
-        "nextAction": "Use CAF Allerton prep sheet; follow up if no outcome",
-        "dueDate": "2026-07-05",
-        "mainRisk": "Outcome pending / exact role terms",
-        "notes": "Application received 7 May 2026. Interview activity recorded later.",
-        "waiting": "them",
-        "appliedDate": "2026-05-07",
-        "source": "CAF Group Jobs",
-        "ref": "",
-        "priority": "High"
-    },
-    {
-        "company": "Northern",
-        "role": "Technical Riding Inspector",
-        "siteAddress": "Allerton",
-        "salary": "",
-        "commuteMins": 35,
-        "drivingRequired": false,
-        "travelPct": 10,
-        "techFit": 7,
-        "wlb": 6,
-        "stage": "Closed",
-        "decision": "Reject",
-        "nextAction": "Archive",
-        "dueDate": "",
-        "mainRisk": "Later marked not progressed",
-        "notes": "Application received 24/25 Apr and 5 May evidence exists; later not progressed.",
-        "waiting": "them",
-        "appliedDate": "2026-04-24",
-        "source": "Northern careers",
-        "ref": "",
-        "priority": "Low"
-    },
-    {
-        "company": "Teva Pharmaceuticals",
-        "role": "Maintenance Engineer",
-        "siteAddress": "",
-        "salary": "",
-        "commuteMins": "",
-        "drivingRequired": false,
-        "travelPct": 0,
-        "techFit": 7,
-        "wlb": 6,
-        "stage": "Applied",
-        "decision": "Qualify first",
-        "nextAction": "Qualify site location, shifts and salary",
-        "dueDate": "2026-07-08",
-        "mainRisk": "Location/salary not captured",
-        "notes": "Successfully applied 28 Apr 2026.",
-        "waiting": "them",
-        "appliedDate": "2026-04-28",
-        "source": "SuccessFactors / Teva",
-        "ref": "",
-        "priority": "Medium"
-    },
-    {
-        "company": "Thermo Fisher Scientific",
-        "role": "Electro-Mechanical / manufacturing-related role",
-        "siteAddress": "Winsford",
-        "salary": "",
-        "commuteMins": 60,
-        "drivingRequired": false,
-        "travelPct": 0,
-        "techFit": 8,
-        "wlb": 7,
-        "stage": "Screening",
-        "decision": "Follow up",
-        "nextAction": "Reply/confirm interest if still live; prepare EM assembly examples",
-        "dueDate": "2026-07-04",
-        "mainRisk": "Exact role title and current status",
-        "notes": "Application questions from recruiter Chidi Hennigfeld; later follow-up asked if still interested.",
-        "waiting": "me",
-        "appliedDate": "2026-04-28",
-        "source": "Thermo Fisher recruiter email",
-        "ref": "",
-        "priority": "High"
-    },
-    {
-        "company": "Nexperia",
-        "role": "Equipment Engineering Technician (Multiskilled)",
-        "siteAddress": "Manchester / Stockport",
-        "salary": "",
-        "commuteMins": 75,
-        "drivingRequired": false,
-        "travelPct": 0,
-        "techFit": 8,
-        "wlb": 7,
-        "stage": "Closed",
-        "decision": "Keep warm",
-        "nextAction": "Keep warm for future roles; preserve interview notes",
-        "dueDate": "2026-07-15",
-        "mainRisk": "Runner-up; commute still acceptable but not ideal",
-        "notes": "Application progressed to on-site / second-stage interview, later recorded as runner-up.",
-        "waiting": "them",
-        "appliedDate": "",
-        "source": "Tracker / project history",
-        "ref": "",
-        "priority": "Medium"
-    },
-    {
-        "company": "Liverpool University Hospitals NHS FT",
-        "role": "Senior Medical Engineer",
-        "siteAddress": "Royal Liverpool Hospital",
-        "salary": 38682,
-        "commuteMins": 45,
-        "drivingRequired": false,
-        "travelPct": 0,
-        "techFit": 8,
-        "wlb": 8,
-        "stage": "Offer",
-        "decision": "Follow up",
-        "nextAction": "Clarify conditional offer / DBS position and next steps",
-        "dueDate": "2026-07-04",
-        "mainRisk": "DBS / conditional-offer issue",
-        "notes": "Conditional offer history recorded in tracker.",
-        "waiting": "them",
-        "appliedDate": "",
-        "source": "Tracker / project history",
-        "ref": "",
-        "priority": "High"
-    },
-    {
-        "company": "QIAGEN",
-        "role": "Senior Engineer / Instrumentation Systems Engineer",
-        "siteAddress": "Manchester",
-        "salary": "",
-        "commuteMins": 75,
-        "drivingRequired": false,
-        "travelPct": 25,
-        "techFit": 8,
-        "wlb": 6,
-        "stage": "Applied",
-        "decision": "Qualify first",
-        "nextAction": "Check status and qualify travel/driving requirement",
-        "dueDate": "2026-07-10",
-        "mainRisk": "Travel/driving and exact site requirements",
-        "notes": "Recorded as applied/status lead in tracker history.",
-        "waiting": "them",
-        "appliedDate": "",
-        "source": "Tracker / project history",
-        "ref": "",
-        "priority": "Medium"
-    },
-    {
-        "company": "AstraZeneca",
-        "role": "Engineering Technician",
-        "siteAddress": "Macclesfield",
-        "salary": "",
-        "commuteMins": 95,
-        "drivingRequired": false,
-        "travelPct": 0,
-        "techFit": 8,
-        "wlb": 6,
-        "stage": "Applied",
-        "decision": "Reject",
-        "nextAction": "Only reopen if commute/shift transport is solved",
-        "dueDate": "",
-        "mainRisk": "Commute around 95 minutes, over target",
-        "notes": "Recorded as applied/active target; commute problem noted.",
-        "waiting": "them",
-        "appliedDate": "",
-        "source": "Tracker / project history",
-        "ref": "",
-        "priority": "Low"
-    },
-    {
-        "company": "WITRON",
-        "role": "Maintenance Technician",
-        "siteAddress": "Warrington",
-        "salary": "",
-        "commuteMins": 50,
-        "drivingRequired": false,
-        "travelPct": 0,
-        "techFit": 7,
-        "wlb": 6,
-        "stage": "Applied",
-        "decision": "Qualify first",
-        "nextAction": "Check status and qualify shifts/salary",
-        "dueDate": "2026-07-11",
-        "mainRisk": "Exact status/date unknown",
-        "notes": "Recorded in earlier applied list.",
-        "waiting": "them",
-        "appliedDate": "",
-        "source": "Tracker / project history",
-        "ref": "",
-        "priority": "Medium"
-    },
-    {
-        "company": "ESS Ltd",
-        "role": "Maintenance Technician",
-        "siteAddress": "Swords, Dublin",
-        "salary": "",
-        "commuteMins": 0,
-        "drivingRequired": false,
-        "travelPct": 0,
-        "techFit": 7,
-        "wlb": 5,
-        "stage": "Applied",
-        "decision": "Keep warm",
-        "nextAction": "Only progress if relocation package makes sense",
-        "dueDate": "2026-07-11",
-        "mainRisk": "Relocation to Ireland",
-        "notes": "Recorded in earlier applied list.",
-        "waiting": "them",
-        "appliedDate": "",
-        "source": "Tracker / project history",
-        "ref": "",
-        "priority": "Low"
-    },
-    {
-        "company": "TAG Heuer",
-        "role": "Trainee Watch Technician",
-        "siteAddress": "Manchester",
-        "salary": "",
-        "commuteMins": 75,
-        "drivingRequired": false,
-        "travelPct": 0,
-        "techFit": 5,
-        "wlb": 7,
-        "stage": "Closed",
-        "decision": "Archive",
-        "nextAction": "Archive",
-        "dueDate": "",
-        "mainRisk": "Lower engineering leverage",
-        "notes": "Recorded in earlier applied list; later likely archived.",
-        "waiting": "them",
-        "appliedDate": "",
-        "source": "Tracker / project history",
-        "ref": "",
-        "priority": "Low"
-    },
-    {
-        "company": "Ex-Mil Recruitment / Ammo Techs",
-        "role": "Ammo Techs role",
-        "siteAddress": "",
-        "salary": "",
-        "commuteMins": "",
-        "drivingRequired": false,
-        "travelPct": 0,
-        "techFit": 7,
-        "wlb": 5,
-        "stage": "Applied",
-        "decision": "Qualify first",
-        "nextAction": "Qualify exact employer, site, travel and clearance requirements",
-        "dueDate": "2026-07-12",
-        "mainRisk": "Exact employer/site/status unknown",
-        "notes": "Recorded in earlier applied list.",
-        "waiting": "them",
-        "appliedDate": "",
-        "source": "Tracker / project history",
-        "ref": "",
-        "priority": "Medium"
-    },
-    {
-        "company": "Aerospace Manufacturing Operative",
-        "role": "Manufacturing Operative",
-        "siteAddress": "",
-        "salary": "",
-        "commuteMins": "",
-        "drivingRequired": false,
-        "travelPct": 0,
-        "techFit": 6,
-        "wlb": 6,
-        "stage": "Applied",
-        "decision": "Qualify first",
-        "nextAction": "Verify employer and application date",
-        "dueDate": "2026-07-12",
-        "mainRisk": "Employer and exact date not fixed",
-        "notes": "Recorded as applied Jan/Feb 2026.",
-        "waiting": "them",
-        "appliedDate": "",
-        "source": "Tracker / project history",
-        "ref": "",
-        "priority": "Medium"
-    },
-    {
-        "company": "Epredia",
-        "role": "Technical Support Specialist II",
-        "siteAddress": "Runcorn",
-        "salary": "",
-        "commuteMins": 45,
-        "drivingRequired": false,
-        "travelPct": 10,
-        "techFit": 9,
-        "wlb": 7,
-        "stage": "Applied",
-        "decision": "Follow up",
-        "nextAction": "Follow up with recruiter and prepare technical-support examples",
-        "dueDate": "2026-07-07",
-        "mainRisk": "Exact current status unknown",
-        "notes": "Applied date recorded as 20 Mar 2026.",
-        "waiting": "them",
-        "appliedDate": "2026-03-20",
-        "source": "Tracker / project history",
-        "ref": "",
-        "priority": "High"
-    }
-];
-  p.jobs = rawJobs.map(j=>Object.assign({id:uid(), contactId:"", log:[], updated:todayISO(), evidenceUrl:""}, j));
-  p.contacts = [];
-  p.cvVariants=[
-    {id:uid(),name:"Fixed-site maintenance / depot",note:"Lead with PPM, RCA, electro-mechanical fault finding, safety-critical maintenance and regulated documentation.",updated:todayISO()},
-    {id:uid(),name:"Medical device / diagnostics",note:"Lead with Abbott, Sysmex, PCR, log analysis, customer support and laboratory downtime reduction.",updated:todayISO()},
-    {id:uid(),name:"Aerospace / manufacturing",note:"Lead with Royal Navy engineering discipline, mechanical assembly, hydraulics/pneumatics, procedural work and quality control.",updated:todayISO()}
+    { company:"Example Manufacturing Ltd", role:"Maintenance Engineer", siteAddress:"Example town", salary:"40000", commuteMins:45, drivingRequired:false, travelPct:0, techFit:7, wlb:7, stage:"Target", decision:"Qualify first", nextAction:"Check shift pattern, salary and fixed-site requirements.", dueDate:todayISO(), mainRisk:"Demo record only. Replace with your own job.", notes:"Fictional sample job. Safe to delete.", waiting:"me", appliedDate:"", source:"Demo", ref:"", priority:"Medium" },
+    { company:"Example Medical Systems", role:"Technical Support Engineer", siteAddress:"Example city", salary:"42000", commuteMins:60, drivingRequired:false, travelPct:10, techFit:8, wlb:7, stage:"Watchlist", decision:"Qualify first", nextAction:"Confirm whether support is fixed-site or field-based.", dueDate:todayISO(), mainRisk:"Driving/travel requirement unclear.", notes:"Fictional sample job. Safe to delete.", waiting:"me", appliedDate:"", source:"Demo", ref:"", priority:"Medium" },
+    { company:"Example Rail Depot", role:"Depot Technician", siteAddress:"Example depot", salary:"38000", commuteMins:35, drivingRequired:false, travelPct:0, techFit:7, wlb:8, stage:"Target", decision:"Apply now", nextAction:"Prepare fixed-site maintenance CV and apply if commute checks out.", dueDate:todayISO(), mainRisk:"Confirm shifts and medical/DBS requirements.", notes:"Fictional sample job. Safe to delete.", waiting:"me", appliedDate:"", source:"Demo", ref:"", priority:"High" }
   ];
-  p.evidence=[
-    {id:uid(),text:"Abbott Molecular field service experience on Alinity m and m2000rt/m2000sp PCR platforms.",updated:todayISO()},
-    {id:uid(),text:"Sysmex field service experience on XN haematology and CS coagulation analysers.",updated:todayISO()},
-    {id:uid(),text:"Royal Navy submarine engineering background with safety-critical hydraulic, pneumatic, electrical and mechanical systems.",updated:todayISO()},
-    {id:uid(),text:"Comfortable with RCA, log-file analysis, regulated documentation, customer communication and urgent downtime response.",updated:todayISO()}
+  p.jobs = rawJobs.map(j=>Object.assign({id:uid(), contactId:"", log:[], updated:todayISO(), evidenceUrl:"", interviewDate:"", interviewType:"", interviewLocation:"", interviewNotes:"", cvUsed:"", coverLetterUsed:"", dbsLikely:"Unknown", disclosureStatus:"Not needed", advertText:"", transitChecked:""}, j));
+  p.contacts = [
+    {id:uid(),name:"Example Recruiter",email:"",phone:"",linkedinUrl:"",company:"Example Agency",role:"Recruiter",type:"network",status:"Planned",lastTouchDate:todayISO(),nextTouchDate:todayISO(),followUpRule:"auto",jobIds:[],timeline:[{date:todayISO(),note:"Fictional sample contact. Replace with your own recruiter."}],updated:todayISO()}
   ];
-  p.starBank=[{id:uid(),title:"RCA on recurring analyser fault",situation:"",task:"",action:"",result:"",updated:todayISO()},{id:uid(),title:"Safety-critical maintenance under procedure",situation:"",task:"",action:"",result:"",updated:todayISO()},{id:uid(),title:"Customer/lab downtime recovery",situation:"",task:"",action:"",result:"",updated:todayISO()}];
+  p.cvVariants=[{id:uid(),name:"Fixed-site engineering CV",note:"Demo CV variant. Replace with your own.",updated:todayISO()}];
+  p.evidence=[{id:uid(),text:"Add your strongest technical evidence bullets here.",updated:todayISO()}];
+  p.starBank=[{id:uid(),title:"Technical fault diagnosis example",situation:"",task:"",action:"",result:"",updated:todayISO()}];
   return p;
 }
 /* ---------- persistence ---------- */
@@ -835,13 +326,21 @@ function P(){ return (root.profiles||[]).find(p=>p.id===root.activeProfileId) ||
 function S(){ const m=(P()||{meta:defaultMeta()}).meta;
   return { drivingAllowed:!!m.drivingAvailable, maxJourneyMins:Number(m.commuteMax)||90,
     salaryMin:Number(m.salaryMin)||35000, maxTravelPct:Number(m.travelMax)||25,
-    staleThresholdDays:Number(m.staleThresholdDays)||10 }; }
+    staleThresholdDays:Number(m.staleThresholdDays)||10,
+    weeklySummaryStyle:m.weeklySummaryStyle||"Personal review",
+    nearbyTowns:lines(m.nearbyTowns||"") }; }
 function save(){ try{ root.appVersion=BUILD; localStorage.setItem(ROOT_KEY, JSON.stringify(root)); }catch(e){ toast("Save failed — storage full?"); } }
 function normaliseProfile(p){
   const d=blankProfile(); for(const k in d){ if(!(k in p)) p[k]=d[k]; }
   p.meta = Object.assign(defaultMeta(), p.meta||{});
-  (p.jobs||[]).forEach(j=>{ if(!j.log)j.log=[]; if(!j.id)j.id=uid(); if(!j.priority)j.priority="Medium"; if(!j.appliedDate)j.appliedDate=""; if(!j.source)j.source=""; if(!j.ref)j.ref=""; if(!j.evidenceUrl)j.evidenceUrl=""; });
-  (p.contacts||[]).forEach(c=>{ if(!c.timeline)c.timeline=[]; if(!c.jobIds)c.jobIds=[]; if(!c.id)c.id=uid(); });
+  (p.jobs||[]).forEach(j=>{ if(!j.log)j.log=[]; if(!j.id)j.id=uid(); if(!j.priority)j.priority="Medium"; if(!j.appliedDate)j.appliedDate=""; if(!j.source)j.source=""; if(!j.ref)j.ref=""; if(!j.evidenceUrl)j.evidenceUrl=""; if(!j.advertText)j.advertText=""; if(!j.transitChecked)j.transitChecked=""; });
+  (p.contacts||[]).forEach(c=>{
+    if(!c.timeline)c.timeline=[]; if(!c.jobIds)c.jobIds=[]; if(!c.id)c.id=uid();
+    if(c.phone==null)c.phone=""; if(c.linkedinUrl==null)c.linkedinUrl="";
+    if(c.lastTouchDate==null)c.lastTouchDate=(c.timeline&&c.timeline.length?c.timeline[c.timeline.length-1].date:(c.updated||""));
+    if(c.nextTouchDate==null)c.nextTouchDate=defaultNextTouch(c.status,c.lastTouchDate||todayISO());
+    if(c.followUpRule==null)c.followUpRule="auto";
+  });
 }
 function load(){
   let r=null;
@@ -959,15 +458,31 @@ function importLatestApplications(){
   // Bring over useful CV/evidence bullets only if missing.
   const haveEv=new Set((p.evidence||[]).map(e=>normKey(e.text)));
   (seed.evidence||[]).forEach(e=>{ if(!haveEv.has(normKey(e.text))){ p.evidence.push({...e,id:uid(),updated:todayISO()}); haveEv.add(normKey(e.text)); } });
-  save(); closeSheet(); render(); sheet("Latest applications import",`<div class="okbox">Import complete.</div><div class="kv"><b>Added:</b> ${added}</div><div class="kv"><b>Updated:</b> ${updated}</div><div class="kv"><b>Skipped duplicates:</b> ${skipped}</div><p class="muted" style="margin-top:10px">Existing notes were preserved. Missing application evidence, references and statuses were added where available.</p><button class="btn primary full" style="margin-top:12px" onclick="closeSheet();jobFilter='newest';go('jobs')">View newest applications</button>`);
+  save(); closeSheet(); render(); sheet("Demo applications import",`<div class="okbox">Import complete.</div><div class="kv"><b>Added:</b> ${added}</div><div class="kv"><b>Updated:</b> ${updated}</div><div class="kv"><b>Skipped duplicates:</b> ${skipped}</div><p class="muted" style="margin-top:10px">Demo jobs were merged into your active profile. Import your private JSON backup for real applications.</p><button class="btn primary full" style="margin-top:12px" onclick="closeSheet();jobFilter='newest';go('jobs')">View newest applications</button>`);
 }
+
+function importUsefulContacts(){
+  const p=P(); if(!p){ toast("No active profile"); return; }
+  const seed=[
+    {name:"Example Recruiter",email:"",company:"Example Agency",role:"Recruiter / hiring contact",type:"network",status:"Planned",lastTouchDate:todayISO(),nextTouchDate:todayISO(),timeline:[{date:todayISO(),note:"Fictional sample contact. Replace with a real recruiter."}]},
+    {name:"Example Employer Contact",email:"",company:"Example Employer",role:"Hiring manager / HR",type:"pipeline",status:"Planned",lastTouchDate:todayISO(),nextTouchDate:todayISO(),timeline:[{date:todayISO(),note:"Fictional sample contact. Replace with a real employer contact."}]}
+  ];
+  let added=0,updated=0,skipped=0;
+  seed.forEach(src=>{
+    const dup=findContactDuplicate(src.name,src.email,null);
+    if(dup){ skipped++; }
+    else { p.contacts.push({id:uid(),phone:"",linkedinUrl:"",jobIds:[],followUpRule:"auto",updated:todayISO(),...src}); added++; }
+  });
+  save(); render(); sheet("Demo contacts import",`<div class="okbox">Demo contacts import complete.</div><div class="kv"><b>Added:</b> ${added}</div><div class="kv"><b>Skipped duplicates:</b> ${skipped}</div><p class="muted" style="margin-top:10px">These are fictional placeholders. Import your private profile JSON for real contacts.</p><button class="btn primary full" style="margin-top:12px" onclick="closeSheet();go('contacts')">View contacts</button>`);
+}
+
 function csvCell(v){ v=v==null?"":String(v); return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; }
 function exportJobsCSV(){
-  const p=P(); const cols=["Company","Role","Location","Applied Date","Stage","Decision","Priority","Source","Reference","Evidence URL","Next Action","Chase/Due Date","Driving Required","Travel %","Commute Mins","Salary","Main Risk","Notes"];
-  const rows=[cols.join(",")].concat(p.jobs.map(j=>[
-    j.company,j.role,j.siteAddress,j.appliedDate,j.stage,j.decision||suggestDecision(j),j.priority,j.source,j.ref,j.evidenceUrl,j.nextAction,calcChaseDate(j),j.drivingRequired?"Yes":"No",j.travelPct,j.commuteMins,j.salary,j.mainRisk,j.notes
-  ].map(csvCell).join(",")));
-  downloadFile("careerconsole_jobs_"+todayISO()+".csv",rows.join("\n"),"text/csv"); toast("CSV exported");
+  const p=P(); const cols=["Employer","Role","Location","Applied Date","Stage","Decision","Priority","Source","Reference","Evidence URL","Contact","Next Action","Best Next Action","Chase Date","Interview Date","Interview Type","Driving Required","Driving Risk","Travel %","Commute Mins","Salary","CV Used","Cover Letter","DBS Likely","Disclosure Status","Main Risk","Data Warnings","Notes"];
+  const rows=[cols.map(csvCell).join(",")].concat(p.jobs.map(j=>{ const c=contactForJob(j), dr=drivingRisk(j); return [
+    j.company,j.role,j.siteAddress,j.appliedDate,j.stage,j.decision||suggestDecision(j),j.priority,j.source,j.ref,j.evidenceUrl,c?c.name:"",j.nextAction,bestNextAction(j),calcChaseDate(j),j.interviewDate,j.interviewType,j.drivingRequired?"Yes":"No",dr.risk,j.travelPct,j.commuteMins,j.salary,j.cvUsed,j.coverLetterUsed,j.dbsLikely,j.disclosureStatus,j.mainRisk,dataWarnings(j).join("; "),j.notes
+  ].map(csvCell).join(","); }));
+  downloadFile("careerconsole_full_tracker_"+todayISO()+".csv",rows.join("\n"),"text/csv"); toast("CSV exported");
 }
 function openApplicationLog(){
   const p=P(); const apps=[...p.jobs].filter(j=>j.appliedDate || ["Applied","Screening","Interview","Offer","Closed"].includes(j.stage)).sort((a,b)=>(b.appliedDate||"").localeCompare(a.appliedDate||""));
@@ -975,6 +490,72 @@ function openApplicationLog(){
   sheet("Application log",`<p class="muted">Submitted applications sorted newest first.</p>${body}<div class="btnrow" style="margin-top:12px"><button class="btn" onclick="exportJobsCSV()">Export CSV</button></div>`);
 }
 
+
+
+/* ============================================================
+   v13.7: interview, action engine, data health and risk helpers
+   ============================================================ */
+function isClosedJob(j){ return ["Archive","Reject"].includes(j.decision) || j.stage==="Closed"; }
+function dateOnly(s){ return (s||"").slice(0,10); }
+function fmtDateTime(s){ if(!s) return "—"; const d=new Date(s); if(isNaN(d)) return s; return d.toLocaleString("en-GB",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}); }
+function daysUntilDate(s){ if(!s) return null; const d=dateOnly(s); if(!d) return null; return daysBetween(d,todayISO()); }
+function interviewLabel(j){
+  if(!j.interviewDate) return "";
+  const n=daysUntilDate(j.interviewDate);
+  if(n===null) return fmtDateTime(j.interviewDate);
+  if(n<0) return "Interview passed";
+  if(n===0) return "Interview today";
+  if(n===1) return "Interview tomorrow";
+  return "Interview in "+n+" days";
+}
+function drivingRisk(j){
+  const role=(j.role||"").toLowerCase(), notes=(j.notes||" "+j.mainRisk||"").toLowerCase(), site=(j.siteAddress||"").toLowerCase();
+  const txt=[role,notes,site,j.source||""].join(" ").toLowerCase();
+  const high=["field service","mobile engineer","territory","company car","full uk driving","driving licence","travel required","on call","call-out","call out"];
+  const low=["depot","workshop","fixed site","fixed-site","manufacturing","laboratory","hospital","rail depot","site based","site-based","assembler","technician allerton"];
+  if(j.drivingRequired || high.some(w=>txt.includes(w))) return {risk:"High",reason:"Driving/travel signal"};
+  if(low.some(w=>txt.includes(w)) || Number(j.travelPct||0)<=10) return {risk:"Low",reason:"Fixed-site/depot signal"};
+  return {risk:"Unclear",reason:"Needs checking"};
+}
+function bestNextAction(j){
+  if(!j) return "—";
+  const dec=j.decision||suggestDecision(j);
+  if(isClosedJob(j) || dec==="Reject" || dec==="Archive") return "Closed — no action.";
+  if(j.interviewDate){
+    const n=daysUntilDate(j.interviewDate);
+    if(n!==null && n>=0) return interviewLabel(j)+" — finish interview prep and travel plan.";
+  }
+  const warns=dataWarnings(j);
+  if(warns.some(w=>w.includes("exact role"))) return "Confirm exact role title.";
+  if(warns.some(w=>w.includes("Driving"))) return "Clarify driving/travel requirement before progressing.";
+  if(j.stage==="Applied" || j.stage==="Screening"){
+    const chase=calcChaseDate(j);
+    if(chase && daysBetween(todayISO(),chase)>=0) return "Chase application now.";
+    if(chase) return "Wait until "+fmtDate(chase)+", then chase.";
+  }
+  if((dec||"").startsWith("Apply")) return "Apply or finish application.";
+  if((dec||"").startsWith("Qualify")) return "Qualify salary, site, travel and driving requirement.";
+  return j.nextAction || dec || "Set a next action.";
+}
+function dataWarnings(j){
+  const w=[];
+  if(!j.company) w.push("Missing company");
+  if(!j.role || /role not visible|not visible|unknown/i.test(j.role)) w.push("Missing exact role title");
+  if(!j.siteAddress) w.push("Missing location/site");
+  if((j.stage==="Applied"||j.appliedDate) && !j.appliedDate) w.push("Missing applied date");
+  if(j.appliedDate && !j.source) w.push("Missing source/recruiter");
+  if(j.appliedDate && !j.evidenceUrl && !j.ref) w.push("Missing evidence or reference");
+  if(drivingRisk(j).risk==="Unclear") w.push("Driving/travel requirement unclear");
+  if(!j.nextAction && !isClosedJob(j)) w.push("No manual next action");
+  if(!j.contactId && ["Applied","Screening","Interview","Offer","Warm lead"].includes(j.stage)) w.push("No linked contact");
+  return w;
+}
+function openDataHealth(){
+  const p=P(); const rows=[];
+  p.jobs.forEach(j=>{ const w=dataWarnings(j); if(w.length) rows.push({j,w}); });
+  const body=rows.length?rows.map(x=>`<div class="card tap" onclick="openJob('${x.j.id}')"><div class="row between"><div><b>${esc(x.j.company||"Missing company")}</b><div class="muted">${esc(x.j.role||"Missing role")}</div></div><span class="pill red">${x.w.length}</span></div><div class="reasons" style="margin-top:8px">${x.w.map(w=>`<span><span class="dot amber"></span> ${esc(w)}</span>`).join("")}</div></div>`).join(""):`<div class="card"><div class="empty">No data-health warnings found.</div></div>`;
+  sheet("Data health",`<p class="muted">Records with missing information or unclear risk.</p>${body}<div class="btnrow" style="margin-top:12px"><button class="btn" onclick="exportJobsCSV()">Export CSV</button></div>`);
+}
 
 /* ============================================================
    ACTION ENGINE
@@ -998,15 +579,15 @@ function buildActions(){
     }
   });
   p.contacts.forEach(c=>{
-    if(["Dead / archive","Archived"].includes(c.status)) return;
-    const last=c.timeline&&c.timeline.length?c.timeline[c.timeline.length-1].date:c.updated;
-    if(c.status==="Planned"){ out.push({pri:2.5,kind:"contact",title:"Reach out: "+c.name+(c.company?" ("+c.company+")":""),why:"Outreach planned, not sent",ref:c.id}); }
-    else if(c.status==="Sent / awaiting reply" && last && daysBetween(todayISO(),last)>=5){ out.push({pri:2.2,kind:"contact",title:"Chase: "+c.name,why:"No reply in "+daysBetween(todayISO(),last)+"d",ref:c.id}); }
+    if(["Dead / archive","Closed / not useful","Archived"].includes(c.status)) return;
+    if(isContactOverdue(c)){ out.push({pri:0.4,kind:"contact",title:"Chase contact: "+c.name+(c.company?" ("+c.company+")":""),why:"Contact overdue since "+fmtDate(c.nextTouchDate)+" · "+(c.status||""),ref:c.id}); }
+    else if(isContactDueToday(c)){ out.push({pri:1.1,kind:"contact",title:"Contact due today: "+c.name,why:(c.status||"Follow-up")+" · due today",ref:c.id}); }
+    else if(c.status==="Planned"){ out.push({pri:2.5,kind:"contact",title:"Reach out: "+c.name+(c.company?" ("+c.company+")":""),why:"Outreach planned",ref:c.id}); }
   });
   out.sort((a,b)=>a.pri-b.pri); return out;
 }
 function urgentCount(){ const p=P(); if(!p) return 0;
-  return p.jobs.filter(j=>!["Archive","Reject"].includes(j.decision)&&isOverdue(j.dueDate)).length; }
+  return p.jobs.filter(j=>!["Archive","Reject"].includes(j.decision)&&isOverdue(j.dueDate)).length + p.contacts.filter(c=>isContactOverdue(c)||isContactDueToday(c)).length; }
 
 /* ============================================================
    CONTACT auto-link + dedupe
@@ -1019,7 +600,7 @@ function findContactDuplicate(name,email,exceptId){
 function ensureContactForJob(job,name,email){
   if(!name && !email) return; const p=P();
   let c=findContactDuplicate(name,email);
-  if(!c){ c={id:uid(),name:name||email,email:email||"",company:job.company||"",role:"",type:"pipeline",status:"Planned",jobIds:[],timeline:[],updated:todayISO()}; p.contacts.push(c); }
+  if(!c){ c={id:uid(),name:name||email,email:email||"",phone:"",linkedinUrl:"",company:job.company||"",role:"",type:"pipeline",status:"Planned",lastTouchDate:todayISO(),nextTouchDate:defaultNextTouch("Planned",todayISO()),followUpRule:"auto",jobIds:[],timeline:[{date:todayISO(),note:"Contact created from job link."}],updated:todayISO()}; p.contacts.push(c); }
   if(!c.jobIds.includes(job.id)) c.jobIds.push(job.id); job.contactId=c.id;
 }
 function mergeContacts(keepId,dropId){ const p=P();
@@ -1062,13 +643,33 @@ function render(){
   document.body.classList.remove("nochrome");
   $("#appHeader").classList.remove("hidden"); $("#navbar").classList.remove("hidden");
   $("#profName").textContent = P().meta.name || "Profile";
-  renderNav();
+  renderNav(); updateAppBadge();
   const v=$("#view");
   if(TAB==="today") v.innerHTML=viewToday();
   else if(TAB==="jobs") v.innerHTML=viewJobs();
   else if(TAB==="contacts") v.innerHTML=viewContacts();
   else if(TAB==="prep") v.innerHTML=viewPrep();
   else if(TAB==="more") v.innerHTML=viewMore();
+  v.classList.remove("view-enter"); void v.offsetWidth; v.classList.add("view-enter");
+}
+function badgeAllowed(){
+  return !("Notification" in window) || Notification.permission === "granted";
+}
+function updateAppBadge(){
+  const count=urgentCount();
+  try{
+    if("setAppBadge" in navigator && badgeAllowed()){ count>0?navigator.setAppBadge(count):navigator.clearAppBadge(); }
+  }catch(e){}
+}
+async function enableAppBadge(){
+  try{
+    if(!("setAppBadge" in navigator)){ toast("App badge not supported on this device"); return; }
+    if("Notification" in window && Notification.permission !== "granted"){
+      const res=await Notification.requestPermission();
+      if(res !== "granted"){ toast("Badge permission not granted"); return; }
+    }
+    updateAppBadge(); toast("App badge enabled");
+  }catch(e){ toast("Could not enable badge"); }
 }
 
 /* ============================================================
@@ -1090,7 +691,7 @@ function renderWelcome(){
       <div class="opt"><div class="ic">⤵️</div><div><div class="t">Import my backup</div><div class="d">Restore a CareerConsole or v12 JSON file</div></div></div>
     </button>
     <button class="btn big full" style="background:var(--card);text-align:left" onclick="useSample()">
-      <div class="opt"><div class="ic">🔧</div><div><div class="t">Use Michael Burke current profile</div><div class="d">Pre-filled with your verified applications and job-search constraints</div></div></div>
+      <div class="opt"><div class="ic">🔧</div><div><div class="t">Use generic demo profile</div><div class="d">Fictional example data only. No personal job history included.</div></div></div>
     </button>
     <input type="file" id="welcomeImport" accept=".json,application/json" class="hidden" onchange="smartImport(event,true)">
     <p class="tiny" style="text-align:center;margin-top:22px">All data stays on this device. ${BUILD}</p>
@@ -1098,7 +699,7 @@ function renderWelcome(){
 }
 function startBlank(){ const name=prompt("Your name (you can change this later):")||"My profile";
   const p=blankProfile(name); root.profiles.push(p); root.activeProfileId=p.id; save(); TAB="more"; render(); setTimeout(openProfileSetup,80); toast("Profile created — finish setup"); }
-function useSample(){ const p=sampleEngineeringProfile(); root.profiles.push(p); root.activeProfileId=p.id; save(); TAB="today"; render(); toast("Michael profile loaded"); }
+function useSample(){ const p=sampleEngineeringProfile(); root.profiles.push(p); root.activeProfileId=p.id; save(); TAB="today"; render(); toast("Demo profile loaded"); }
 
 /* ============================================================
    TODAY
@@ -1107,8 +708,9 @@ function viewToday(){
   const p=P(); const top5=buildActions().slice(0,5);
   const overdue=p.jobs.filter(j=>!["Archive","Reject"].includes(j.decision)&&isOverdue(j.dueDate)).sort((a,b)=>(a.dueDate||"").localeCompare(b.dueDate||""));
   const best=[...p.jobs].filter(j=>!["Archive","Reject"].includes(j.decision)).map(j=>({j,s:scoreJob(j).score})).sort((a,b)=>b.s-a.s).slice(0,4);
-  const contactFollow=p.contacts.filter(c=>["Planned","Sent / awaiting reply"].includes(c.status));
-  const interview=p.jobs.filter(j=>j.stage==="Interview");
+  const contactFollow=p.contacts.filter(c=>!["Dead / archive","Closed / not useful","Archived"].includes(c.status) && (isContactOverdue(c)||isContactDueToday(c)||["Planned","Sent / awaiting reply"].includes(c.status)));
+  const interview=p.jobs.filter(j=>j.stage==="Interview" || j.interviewDate).sort((a,b)=>(a.interviewDate||"9999").localeCompare(b.interviewDate||"9999"));
+  const healthCount=p.jobs.reduce((n,j)=>n+dataWarnings(j).length,0);
   const fn=(p.meta.name||"").split(" ")[0];
   let h=`<h1>Today</h1><p class="subtle">${fn?fn+" · ":""}${new Date().toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long"})}</p>`;
   const bkDays = root.lastBackup ? daysBetween(todayISO(),root.lastBackup) : null;
@@ -1125,14 +727,15 @@ function viewToday(){
       <span class="pill">Applied: ${wk} this week · ${mo} this month</span>
       <span class="pill ${waiting?'blue':''}">Awaiting reply: ${waiting}</span>
       <span class="pill ${interview.length?'green':''}">Interviews: ${interview.length}</span>
-      <span class="pill">Response rate: ${rate}%</span></div></div>`; }
+      <span class="pill">Response rate: ${rate}%</span><span class="pill ${healthCount?'red':'green'}">Data health: ${healthCount}</span></div></div>`; }
   h+=`<h2 class="sec">What should I do now?</h2>`;
   h+= top5.length? `<div class="card">`+top5.map((a,i)=>`<div class="act tap" onclick="${a.kind==='job'?`openJob('${a.ref}')`:`openContact('${a.ref}')`}"><div class="num">${i+1}</div><div class="body"><div class="title">${esc(a.title)}</div><div class="why">${esc(a.why)}</div></div></div>`).join("")+`</div>`
      : `<div class="card"><div class="empty">Nothing queued. Add jobs (Jobs tab) or set follow-up dates.</div></div>`;
   if(overdue.length){ h+=`<h2 class="sec"><span class="dot red"></span>Overdue follow-ups</h2>`+overdue.map(j=>jobMini(j,`Overdue ${Math.abs(daysBetween(todayISO(),j.dueDate))}d`)).join(""); }
   h+=`<h2 class="sec">Best opportunities</h2>`+(best.length?best.map(b=>jobMini(b.j,`Score ${b.s}/10`)).join(""):`<div class="card"><div class="empty">No live jobs scored yet.</div></div>`);
-  h+=`<h2 class="sec">Contact follow-ups</h2>`+(contactFollow.length?contactFollow.slice(0,5).map(c=>`<div class="card tap" onclick="openContact('${c.id}')"><div class="row between"><div><b>${esc(c.name)}</b><div class="muted">${esc(c.company||"")}${c.role?" · "+esc(c.role):""}</div></div><span class="pill ${c.status==='Planned'?'amber':'blue'}">${esc(c.status)}</span></div></div>`).join(""):`<div class="card"><div class="empty">No outreach in progress.</div></div>`);
-  h+=`<h2 class="sec">Interview prep</h2>`+(interview.length?interview.map(j=>jobMini(j,"Interview")).join(""):`<div class="card"><div class="empty">No interviews booked.</div></div>`);
+  h+=`<h2 class="sec">Contact follow-ups</h2>`+(contactFollow.length?contactFollow.slice(0,5).map(c=>`<div class="card tap" onclick="openContact('${c.id}')"><div class="row between"><div><b>${esc(c.name)}</b><div class="muted">${esc(c.company||"")}${c.role?" · "+esc(c.role):""}</div><div class="tiny">Next touch: ${fmtDate(c.nextTouchDate)} ${isContactOverdue(c)?"· overdue":""}</div></div><span class="pill ${isContactOverdue(c)?'red':c.status==='Planned'?'amber':'blue'}">${esc(c.status)}</span></div></div>`).join(""):`<div class="card"><div class="empty">No outreach in progress.</div></div>`);
+  h+=`<h2 class="sec">Interview prep</h2>`+(interview.length?interview.map(j=>jobMini(j,interviewLabel(j)||"Interview")).join(""):`<div class="card"><div class="empty">No interviews booked.</div></div>`);
+  h+=`<h2 class="sec">Data health</h2><div class="card tap" onclick="openDataHealth()"><div class="row between"><b>Missing-info checker</b><span class="pill ${healthCount?'red':'green'}">${healthCount} warnings</span></div><div class="muted" style="margin-top:6px">Role title, evidence, driving risk, contact links and next actions.</div></div>`;
   h+=`<h2 class="sec">Weekly review</h2><div class="card tap" onclick="openWeekly()"><div class="row between"><b>Run weekly review</b><span class="pill blue">Open →</span></div><div class="muted" style="margin-top:6px">Priority jobs, follow-ups, contacts to chase, applications to send, archives.</div></div>`;
   return h;
 }
@@ -1155,6 +758,9 @@ function viewJobs(){
   if(f==="newest") list=list.filter(j=>j.appliedDate).sort((a,b)=>(b.appliedDate||"").localeCompare(a.appliedDate||""));
   else if(f==="applications") list=list.filter(j=>j.appliedDate || ["Applied","Screening","Interview","Offer","Closed"].includes(j.stage)).sort((a,b)=>(b.appliedDate||"").localeCompare(a.appliedDate||""));
   else if(f==="chase") list=list.filter(j=>calcChaseDate(j) && daysBetween(todayISO(),calcChaseDate(j))>=0).sort((a,b)=>calcChaseDate(a).localeCompare(calcChaseDate(b)));
+  else if(f==="interviews") list=list.filter(j=>j.stage==="Interview" || j.interviewDate).sort((a,b)=>(a.interviewDate||"9999").localeCompare(b.interviewDate||"9999"));
+  else if(f==="health") list=list.filter(j=>dataWarnings(j).length);
+  else if(f==="driving") list=list.filter(j=>drivingRisk(j).risk!=="Low");
   else if(f==="high") list=list.filter(j=>j.priority==="High" && !["Archive","Reject"].includes(j.decision));
   else if(f==="apply") list=list.filter(j=>(j.decision||suggestDecision(j)).startsWith("Apply"));
   else if(f==="qualify") list=list.filter(j=>(j.decision||suggestDecision(j)).startsWith("Qualify"));
@@ -1163,8 +769,8 @@ function viewJobs(){
   else if(f==="archived") list=list.filter(j=>["Archive","Reject"].includes(j.decision));
   else { list=list.filter(j=>!["Archive","Reject"].includes(j.decision)); list.sort((a,b)=>scoreJob(b).score-scoreJob(a).score); }
   if(!["all","newest","applications","chase"].includes(f)) list.sort((a,b)=>scoreJob(b).score-scoreJob(a).score);
-  const chips=[["all","Best first"],["newest","Newest applied"],["applications","Applications"],["chase","Need chasing"],["high","High priority"],["apply","Apply now"],["qualify","Qualify"],["overdue","Overdue"],["warm","Keep warm"],["archived","Archived"]];
-  let h=`<div class="row between"><h1>Jobs</h1><div class="btnrow"><button class="btn sm" onclick="openApplicationLog()">Application log</button><button class="btn primary sm" onclick="openJob()">+ Add</button></div></div>`;
+  const chips=[["all","Best first"],["newest","Newest applied"],["applications","Applications"],["chase","Need chasing"],["interviews","Interviews"],["health","Data health"],["driving","Driving risk"],["high","High priority"],["apply","Apply now"],["qualify","Qualify"],["overdue","Overdue"],["warm","Keep warm"],["archived","Archived"]];
+  let h=`<div class="row between"><h1>Jobs</h1><div class="btnrow"><button class="btn sm" onclick="openAdvertQuickAdd()">Paste advert</button><button class="btn primary sm" onclick="openJob()">+ Add</button></div></div>`;
   h+=`<input class="in searchbar" id="jobSearch" type="search" placeholder="Search company, role, ref, notes…" value="${esc(jobSearch)}" oninput="setJobSearch(this.value)" autocomplete="off">`;
   h+=`<div class="chips">`+chips.map(c=>`<button class="chip ${jobFilter===c[0]?'on':''}" onclick="setJobFilter('${c[0]}')">${c[1]}</button>`).join("")+`</div>`;
   if(!list.length) return h+`<div class="card"><div class="empty">No jobs in this view.</div></div>`;
@@ -1176,17 +782,96 @@ function setContactSearch(v){ contactSearch=v; refocusAfterRender("contactSearch
 function refocusAfterRender(id){ render(); const el=$("#"+id); if(el){ el.focus(); const n=el.value.length; try{el.setSelectionRange(n,n);}catch(e){} } }
 function jobCard(j){
   const {score}=scoreJob(j); const dec=j.decision||suggestDecision(j); const c=contactForJob(j);
-  const cm=Number(j.commuteMins||0); const cmDot=cm<=60?"green":cm<=S().maxJourneyMins?"amber":"red";
-  const driveFlag=(j.drivingRequired&&!S().drivingAllowed);
-  return `<div class="card tap" onclick="openJob('${j.id}')"><div class="row between"><div style="min-width:0"><div style="font-weight:700;font-size:16px">${esc(j.company)}</div><div class="muted">${esc(j.role)}</div>${(j.appliedDate||j.source||j.ref)?`<div class="tiny">${esc(evidenceLine(j))}</div>`:""}</div><div class="score">${score}<small>/10</small></div></div>
-    <div class="row wrap" style="margin-top:9px;gap:6px"><span class="pill ${dec.startsWith('Apply')?'green':dec.startsWith('Reject')?'red':'blue'}">${esc(dec)}</span>${j.priority?`<span class="pill ${j.priority==='High'?'amber':j.priority==='Low'?'':'blue'}">${esc(j.priority)}</span>`:""}${driveFlag?`<span class="pill red">Driving</span>`:""}<span class="pill"><span class="dot ${cmDot}"></span>${cm?cm+'m':'commute ?'}</span><span class="pill">${money(j.salary)}</span></div>
-    <div class="divider"></div><div class="kv"><b>Next:</b> ${esc(j.nextAction||"—")}</div>
-    <div class="row between" style="margin-top:5px"><span class="tiny">Chase ${fmtDate(calcChaseDate(j))} ${isOverdue(calcChaseDate(j))?'· <span style="color:#ff7a72">due</span>':''}</span>${c?`<span class="tiny">${esc(c.name)}</span>`:`<span class="tiny" style="color:#ff7a72">no contact</span>`}</div>${j.evidenceUrl?`<div class="tiny" style="margin-top:5px"><a href="${esc(j.evidenceUrl)}" target="_blank" onclick="event.stopPropagation()">Open evidence</a></div>`:""}
+  const scClass=score>=8?"good":score>=5?"warn":"poor";
+  const chase=calcChaseDate(j); const due=isOverdue(chase), today=(chase===todayISO());
+  const risk=drivingRisk(j).risk; const driveHard=(j.drivingRequired&&!S().drivingAllowed);
+  const riskPills=[];
+  if(due) riskPills.push(`<span class="pill red">Overdue</span>`);
+  else if(today) riskPills.push(`<span class="pill amber">Due today</span>`);
+  if(driveHard || risk==="High") riskPills.push(`<span class="pill red">Driving risk</span>`);
+  else if(risk==="Unclear") riskPills.push(`<span class="pill amber">Driving unclear</span>`);
+  const warnCount=dataWarnings(j).length;
+  if(warnCount) riskPills.push(`<span class="pill red">${warnCount} warnings</span>`);
+  return `<div class="card tap" onclick="openJob('${j.id}')"><div class="row between"><div style="min-width:0"><div style="font-weight:800;font-size:17px">${esc(j.company)}</div><div class="muted">${esc(j.role)}</div>${(j.appliedDate||j.source||j.ref)?`<div class="tiny">${esc(evidenceLine(j))}</div>`:""}</div><div class="score ${scClass}">${score}<small>/10</small></div></div>
+    <div class="row wrap" style="margin-top:10px;gap:6px"><span class="pill">${esc(dec)}</span>${riskPills.slice(0,2).join("")}</div>
+    <div class="divider"></div><div class="kv"><b>Best next:</b> ${esc(bestNextAction(j))}</div>${j.interviewDate?`<div class="kv"><b>Interview:</b> ${esc(interviewLabel(j))} · ${esc(fmtDateTime(j.interviewDate))}${j.interviewType?" · "+esc(j.interviewType):""}</div>`:""}
+    <div class="row between" style="margin-top:6px"><span class="tiny">Chase ${fmtDate(chase)}</span>${c?`<span class="tiny">${esc(c.name)}</span>`:`<span class="tiny" style="color:#ff7a72">no contact</span>`}</div>${j.evidenceUrl?`<div class="tiny" style="margin-top:5px"><a href="${esc(j.evidenceUrl)}" target="_blank" onclick="event.stopPropagation()">Open evidence</a></div>`:""}
+    <div class="row wrap" style="margin-top:8px;gap:6px"><button class="btn sm ghost" onclick="event.stopPropagation();openTransit('${j.id}')">Check transit</button>${riskPills.slice(2).join("")}</div>
     ${j.mainRisk?`<div class="reasons"><span class="dot amber"></span> Risk: ${esc(j.mainRisk)}</div>`:""}</div>`;
 }
+function openAdvertQuickAdd(){
+  const body=`<p class="muted">Paste the full job advert. CareerConsole will pull out likely role, company, salary, location, reference and driving clues, then save the full advert text on the job record.</p>
+    <label class="f">Full job advert</label><textarea class="in" id="ad_text" style="min-height:260px" placeholder="Paste the advert text here. Use iPhone Live Text if starting from a screenshot."></textarea>
+    <div class="field2"><div><label class="f">Source / platform</label><input class="in" id="ad_source" placeholder="Indeed / LinkedIn / recruiter"></div><div><label class="f">Evidence URL</label><input class="in" id="ad_url" placeholder="https://..."></div></div>
+    <div class="btnrow" style="margin-top:14px"><button class="btn primary full" onclick="saveAdvertQuickAdd()">Create job from advert</button><button class="btn ghost full" onclick="closeSheet()">Cancel</button></div>
+    <p class="tiny" style="margin-top:8px">Screenshot OCR is deliberately not built in. On iPhone, use Live Text to copy from a screenshot, then paste here.</p>`;
+  sheet("Paste job advert",body);
+}
+function firstLineLike(text,patterns){ const arr=(text||"").split(/\n+/).map(x=>x.trim()).filter(Boolean); for(const pat of patterns){ const hit=arr.find(x=>pat.test(x)); if(hit) return hit.replace(/^(job title|title|role|position)\s*[:\-]\s*/i,""); } return ""; }
+function hasUnnegated(text, pattern){
+  const flags=pattern.flags.includes("g")?pattern.flags:pattern.flags+"g";
+  const re=new RegExp(pattern.source, flags); let m;
+  while((m=re.exec(text))){
+    const ctx=text.slice(Math.max(0,m.index-55), Math.min(text.length,m.index+m[0].length+55));
+    const neg=/\b(no|not|without|doesn['’]?t|do not|don['’]?t)\b[^.\n]{0,55}\b(driv(?:ing|er)|licen[cs]e|travel|company car|field service|territory|customer sites)\b|\b(driv(?:ing|er)|licen[cs]e|travel|company car|field service|territory|customer sites)\b[^.\n]{0,55}\b(not required|not essential|not needed|not mandatory|isn['’]?t required|no requirement)\b/i.test(ctx);
+    if(!neg) return true;
+  }
+  return false;
+}
+function parseAdvertText(text){
+  const t=text||"", linesArr=t.split(/\n+/).map(x=>x.trim()).filter(Boolean);
+  const salary=(t.match(/£\s?\d{1,3}(?:\.\d{1,2})?(?:[,\s]?\d{3})?(?:\s?(?:-|–|to)\s?£?\s?\d{1,3}(?:\.\d{1,2})?(?:[,\s]?\d{3})?)?\s*(?:k|K|pa|per annum|a year|\/year|per\s+hour|\/hour|ph|p\/h)?/)||[""])[0].trim();
+  const ref=(t.match(/\b(?:ref(?:erence)?|job\s*id|vacancy|req(?:uisition)?|id)\b\s*[:#\-]?\s*([A-Z0-9][A-Z0-9\-\/]{3,})/i)||t.match(/\bBBBH\d+\b/i)||[]).pop()||"";
+  let role=firstLineLike(t,[/engineer|technician|fitter|assembler|maintenance|medical|process|manufacturing|instrument|reliability|skilled/i]) || (linesArr[0]||"");
+  let company="";
+  const compLine=linesArr.find(x=>/^(company|employer|organisation|organization)\s*[:\-]/i.test(x));
+  if(compLine) company=compLine.replace(/^[^:\-]+[:\-]\s*/,'');
+  if(!company){ const at=role.match(/\b(?:at|with|for)\s+(.+)$/i); if(at) company=at[1].trim(); }
+  if(company){ role=role.replace(new RegExp("\\s+(?:at|with|for)\\s+"+company.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"\\s*$","i"),"").trim(); }
+  role=role.replace(/\s+[-–|]\s+.*$/,'').trim();
+  const locLine=linesArr.find(x=>/^(location|site|based)\s*[:\-]/i.test(x));
+  let location=locLine?locLine.replace(/^[^:\-]+[:\-]\s*/,''):"";
+  if(!location){
+    const known=[...new Set([...(S().nearbyTowns||[]),"Liverpool","Halewood","Broughton","Bromborough","Runcorn","Speke","Warrington","Allerton","Hunts Cross","Manchester","Macclesfield","Winsford","Daresbury","Port Sunlight","Wirral","Chester","Stockport","Dublin","Cork","Prescot"])];
+    const hit=known.find(k=>new RegExp("\\b"+k.replace(/ /g,"\\s+")+"\\b","i").test(t)); if(hit) location=hit;
+  }
+  const fixedLow=/fixed[-\s]?site|depot|workshop|manufacturing|factory|laboratory|lab|hospital|onsite|on-site|rail depot/i.test(t);
+  const strongDriving=hasUnnegated(t,/field service|mobile engineer|territory|company car|travel required|site-to-site|customer sites/i);
+  const weakLicence=hasUnnegated(t,/full\s+uk\s+driv(?:ing|er)|driv(?:ing|er)['’]?s?\s+licen[cs]e/i);
+  const drivingHigh=strongDriving || (weakLicence && !fixedLow);
+  return {company,role,location,salary,ref,drivingHigh,fixedLow,hourly:/per\s+hour|\/hour|hourly|p\/h|\bph\b/i.test(salary)};
+}
+function salaryToNumber(salaryText){
+  const raw=(salaryText||"").toLowerCase();
+  if(/per\s+hour|\/hour|hourly|p\/h|\bph\b/.test(raw)) return "";
+  const m=raw.match(/(\d{2,3})(?:[,\s]?(\d{3}))?/); if(!m) return "";
+  let n=Number((m[1]||"")+(m[2]||""));
+  if(/\bk\b|\d\s*k/.test(raw) && n<1000) n*=1000;
+  return n?String(n):"";
+}
+function saveAdvertQuickAdd(){
+  const txt=$("#ad_text").value.trim(); if(!txt){toast("Paste the advert first");return;}
+  const parsed=parseAdvertText(txt), p=P();
+  const salaryNum=salaryToNumber(parsed.salary);
+  const salaryNote=parsed.salary ? (parsed.hourly ? "Hourly rate text stored only: "+parsed.salary : "Salary text: "+parsed.salary) : "";
+  const j={id:uid(),company:parsed.company||"Company to confirm",role:parsed.role||"Role title to confirm",siteAddress:parsed.location||"Location to confirm",salary:salaryNum,commuteMins:"",drivingRequired:!!parsed.drivingHigh,travelPct:"",techFit:5,wlb:5,stage:"Target",decision:"Qualify first",contactId:"",nextAction:parsed.drivingHigh?"Clarify driving/travel requirement before progressing":"Review advert, correct parsed fields, then decide next action",dueDate:todayISO(),mainRisk:parsed.drivingHigh?"Advert suggests possible driving / field travel":"Parsed from pasted advert; check fields",notes:`Created from pasted advert on ${fmtDate(todayISO())}. ${salaryNote}`.trim(),waiting:"me",log:[{date:todayISO(),note:"Job created from pasted advert quick add."}],appliedDate:"",source:$("#ad_source").value.trim(),ref:parsed.ref||"",evidenceUrl:$("#ad_url").value.trim(),priority:"Medium",interviewDate:"",interviewType:"",interviewLocation:"",interviewNotes:"",cvUsed:"",coverLetterUsed:"",dbsLikely:"Unknown",disclosureStatus:"Not needed",advertText:txt,transitChecked:"",updated:todayISO()};
+  p.jobs.push(j); save(); closeSheet(); render(); toast("Advert saved"); setTimeout(()=>openJob(j.id),80);
+}
+function googleMapsTransitUrl(j){
+  const origin=(P().meta&&P().meta.postcode)||""; const dest=(j&&j.siteAddress)||"";
+  return `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(dest)}&travelmode=transit&dir_action=navigate`;
+}
+function openTransit(id){
+  const j=P().jobs.find(x=>x.id===id); if(!j){toast("Job not found");return;}
+  if(!((P().meta&&P().meta.postcode)||"").trim()){toast("Add your postcode in profile setup first");return;}
+  if(!(j.siteAddress||"").trim()){toast("Add a site address first");return;}
+  j.transitChecked=todayISO(); j.log=j.log||[]; j.log.push({date:todayISO(),note:"Opened Google Maps public-transport route check."}); save();
+  window.open(googleMapsTransitUrl(j),"_blank");
+}
+
 function openJob(id){
   const p=P();
-  const j=id?p.jobs.find(x=>x.id===id):{id:null,company:"",role:"",siteAddress:"",salary:"",commuteMins:"",drivingRequired:false,travelPct:"",techFit:5,wlb:5,stage:"Target",decision:"",contactId:"",nextAction:"",dueDate:todayISO(),mainRisk:"",notes:"",waiting:"me",log:[],appliedDate:"",source:"",ref:"",evidenceUrl:"",priority:"Medium"};
+  const j=id?p.jobs.find(x=>x.id===id):{id:null,company:"",role:"",siteAddress:"",salary:"",commuteMins:"",drivingRequired:false,travelPct:"",techFit:5,wlb:5,stage:"Target",decision:"",contactId:"",nextAction:"",dueDate:todayISO(),mainRisk:"",notes:"",waiting:"me",log:[],appliedDate:"",source:"",ref:"",evidenceUrl:"",priority:"Medium",interviewDate:"",interviewType:"",interviewLocation:"",interviewNotes:"",cvUsed:"",coverLetterUsed:"",dbsLikely:"Unknown",disclosureStatus:"Not needed",advertText:""};
   const isNew=!id; const {score,reasons}=isNew?{score:0,reasons:[]}:scoreJob(j);
   const c=isNew?null:contactForJob(j); const contactName=c?c.name:"";
   const body=`
@@ -1196,32 +881,40 @@ function openJob(id){
     <div class="field2"><div><label class="f">Applied date</label><input class="in" id="j_applied" type="date" value="${esc(j.appliedDate)}"></div><div><label class="f">Priority</label><select class="in" id="j_priority">${PRIORITIES.map(x=>`<option ${j.priority===x?'selected':''}>${x}</option>`).join("")}</select></div></div>
     <div class="field2"><div><label class="f">Source / platform</label><input class="in" id="j_source" value="${esc(j.source)}" placeholder="Indeed / Workday / recruiter"></div><div><label class="f">Reference</label><input class="in" id="j_ref" value="${esc(j.ref)}" placeholder="Vacancy ref"></div></div>
     <label class="f">Evidence URL <span class="opt">(email/job advert)</span></label><input class="in" id="j_evidence" value="${esc(j.evidenceUrl)}" placeholder="https://...">
+    <label class="f">Saved advert text <span class="opt">(paste/store the full advert before it disappears)</span></label><textarea class="in" id="j_advert" placeholder="Paste full job advert/spec here">${esc(j.advertText||'')}</textarea>
+    <div class="field2"><div><label class="f">Interview date/time</label><input class="in" id="j_interview" type="datetime-local" value="${esc(j.interviewDate)}"></div><div><label class="f">Interview type</label><input class="in" id="j_interview_type" value="${esc(j.interviewType||'')}" placeholder="Phone / Teams / On-site"></div></div>
+    <label class="f">Interview location / link</label><input class="in" id="j_interview_loc" value="${esc(j.interviewLocation||'')}" placeholder="Site, Teams link or call details">
+    <label class="f">Interview prep notes</label><textarea class="in" id="j_interview_notes" placeholder="Prep status, travel plan, questions to ask">${esc(j.interviewNotes||'')}</textarea>
     <div class="field2"><div><label class="f">Site address</label><input class="in" id="j_site" value="${esc(j.siteAddress)}" placeholder="Town / Remote"></div><div><label class="f">Salary £</label><input class="in" id="j_salary" type="number" value="${esc(j.salary)}" placeholder="${S().salaryMin}"></div></div>
     <div class="field2"><div><label class="f">Commute (mins one-way)</label><input class="in" id="j_commute" type="number" value="${esc(j.commuteMins)}"></div><div><label class="f">Travel %</label><input class="in" id="j_travel" type="number" value="${esc(j.travelPct)}" placeholder="0"></div></div>
+    ${!isNew?`<button class="btn ghost full" style="margin-top:10px" onclick="openTransit('${j.id}')">Open public-transport route in Google Maps</button>`:""}
     <div class="field2"><div><label class="f">Driving required?</label><select class="in" id="j_driving"><option value="no" ${!j.drivingRequired?'selected':''}>No / fixed-site</option><option value="yes" ${j.drivingRequired?'selected':''}>Yes</option></select></div><div><label class="f">Waiting on</label><select class="in" id="j_waiting"><option value="me" ${j.waiting==='me'?'selected':''}>Me</option><option value="them" ${j.waiting==='them'?'selected':''}>Them</option></select></div></div>
     <div class="field2"><div><label class="f">Technical fit /10</label><input class="in" id="j_tech" type="number" min="0" max="10" value="${esc(j.techFit)}"></div><div><label class="f">Work-life /10</label><input class="in" id="j_wlb" type="number" min="0" max="10" value="${esc(j.wlb)}"></div></div>
     <label class="f">Decision <span class="opt">(blank = auto)</span></label><select class="in" id="j_decision"><option value="">Auto: ${esc(suggestDecision(j))}</option>${DECISIONS.map(d=>`<option ${j.decision===d?'selected':''}>${d}</option>`).join("")}</select>
     <label class="f">Next action</label><input class="in" id="j_next" value="${esc(j.nextAction)}">
     <label class="f">Due date</label><input class="in" id="j_due" type="date" value="${esc(j.dueDate)}">
     <label class="f">Main risk / blocker</label><input class="in" id="j_risk" value="${esc(j.mainRisk)}" placeholder="e.g. confirm fixed-site, salary, clearance">
+    <div class="field2"><div><label class="f">CV used</label><input class="in" id="j_cv" value="${esc(j.cvUsed||'')}" placeholder="Tailored CV/version"></div><div><label class="f">Cover letter used</label><input class="in" id="j_cover" value="${esc(j.coverLetterUsed||'')}" placeholder="Yes / No / version"></div></div>
+    <div class="field2"><div><label class="f">DBS likely?</label><select class="in" id="j_dbs"><option ${(!j.dbsLikely||j.dbsLikely==='Unknown')?'selected':''}>Unknown</option><option ${j.dbsLikely==='Yes'?'selected':''}>Yes</option><option ${j.dbsLikely==='No'?'selected':''}>No</option></select></div><div><label class="f">Disclosure status</label><input class="in" id="j_disclosure" value="${esc(j.disclosureStatus||'Not needed')}" placeholder="Not needed / prepared / sent"></div></div>
     <label class="f">Contact person <span class="opt">(auto-links)</span></label><input class="in" id="j_contact" value="${esc(contactName)}" placeholder="Recruiter / hiring manager">
     <label class="f">Contact email <span class="opt">(optional)</span></label><input class="in" id="j_cemail" value="${esc(c?c.email:'')}">
     <label class="f">Notes</label><textarea class="in" id="j_notes">${esc(j.notes)}</textarea>
     ${!isNew && j.log&&j.log.length?`<label class="f">Activity log</label><div class="reasons" style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px">${j.log.slice().reverse().map(l=>`<div>${fmtDate(l.date)} — ${esc(l.note)}</div>`).join("")}</div>`:""}
     <div class="btnrow" style="margin-top:16px"><button class="btn primary full" onclick="saveJob('${j.id||''}')">Save</button></div>
-    ${!isNew?`<div class="btnrow" style="margin-top:8px"><button class="btn sm ghost" onclick="genFromJob('${j.id}')">Generate email / letter</button><button class="btn sm danger" onclick="deleteJob('${j.id}')">Delete</button></div>`:""}`;
+    ${!isNew?`<div class="btnrow" style="margin-top:8px"><button class="btn sm primary" onclick="openInterviewPrep('${j.id}')">Prepare interview</button><button class="btn sm ghost" onclick="genFromJob('${j.id}')">Generate email / letter</button><button class="btn sm danger" onclick="deleteJob('${j.id}')">Delete</button></div>`:""}`;
   sheet(isNew?"Add job":esc(j.company),body);
 }
 function saveJob(id){
   const p=P(); const get=s=>$("#"+s).value.trim();
-  const data={company:get("j_company"),role:get("j_role"),appliedDate:get("j_applied"),priority:$("#j_priority").value,source:get("j_source"),ref:get("j_ref"),evidenceUrl:get("j_evidence"),siteAddress:get("j_site"),salary:get("j_salary"),commuteMins:get("j_commute"),travelPct:get("j_travel"),drivingRequired:$("#j_driving").value==="yes",waiting:$("#j_waiting").value,techFit:get("j_tech"),wlb:get("j_wlb"),stage:$("#j_stage").value,decision:$("#j_decision").value,nextAction:get("j_next"),dueDate:get("j_due"),mainRisk:get("j_risk"),notes:get("j_notes"),updated:todayISO()};
+  const data={company:get("j_company"),role:get("j_role"),appliedDate:get("j_applied"),priority:$("#j_priority").value,source:get("j_source"),ref:get("j_ref"),evidenceUrl:get("j_evidence"),advertText:get("j_advert"),interviewDate:get("j_interview"),interviewType:get("j_interview_type"),interviewLocation:get("j_interview_loc"),interviewNotes:get("j_interview_notes"),siteAddress:get("j_site"),salary:get("j_salary"),commuteMins:get("j_commute"),travelPct:get("j_travel"),drivingRequired:$("#j_driving").value==="yes",waiting:$("#j_waiting").value,techFit:get("j_tech"),wlb:get("j_wlb"),stage:$("#j_stage").value,decision:$("#j_decision").value,nextAction:get("j_next"),dueDate:get("j_due"),mainRisk:get("j_risk"),cvUsed:get("j_cv"),coverLetterUsed:get("j_cover"),dbsLikely:$("#j_dbs").value,disclosureStatus:get("j_disclosure"),notes:get("j_notes"),updated:todayISO()};
   const cName=get("j_contact"),cEmail=get("j_cemail"); let j;
   if(id){ j=p.jobs.find(x=>x.id===id); Object.assign(j,data); } else { j={id:uid(),log:[],contactId:"",...data}; p.jobs.push(j); }
   if(cName||cEmail) ensureContactForJob(j,cName,cEmail);
   save(); closeSheet(); render(); toast("Saved");
 }
-function deleteJob(id){ if(!confirm("Delete this job?"))return; const p=P(); p.jobs=p.jobs.filter(j=>j.id!==id); p.contacts.forEach(c=>c.jobIds=(c.jobIds||[]).filter(x=>x!==id)); save(); closeSheet(); render(); toast("Deleted"); }
-function logActivity(id){ const note=prompt("Log note:"); if(!note)return; const j=P().jobs.find(x=>x.id===id); j.log.push({date:todayISO(),note}); j.updated=todayISO(); save(); openJob(id); }
+function deleteJob(id){ if(!confirm("Delete this job?"))return; const p=P(); const idx=p.jobs.findIndex(j=>j.id===id); if(idx<0)return; const job=JSON.parse(JSON.stringify(p.jobs[idx])); const contactLinks=p.contacts.map(c=>({id:c.id,had:(c.jobIds||[]).includes(id)})); p.jobs.splice(idx,1); p.contacts.forEach(c=>c.jobIds=(c.jobIds||[]).filter(x=>x!==id)); save(); closeSheet(); render(); toastUndo("Job deleted",()=>{ const p=P(); p.jobs.splice(Math.min(idx,p.jobs.length),0,job); p.contacts.forEach(c=>{ const link=contactLinks.find(x=>x.id===c.id); if(link&&link.had&&!c.jobIds.includes(id)) c.jobIds.push(id); }); save(); render(); toast("Restored"); }); }
+function logActivity(id){ const body=`<label class="f">Job activity note</label><textarea class="in" id="job_note" placeholder="What changed?"></textarea><div class="btnrow" style="margin-top:12px"><button class="btn primary full" onclick="saveJobNote('${id}')">Save note</button></div>`; sheet("Add job note",body); }
+function saveJobNote(id){ const note=$("#job_note").value.trim(); if(!note){toast("Note required");return;} const j=P().jobs.find(x=>x.id===id); j.log=j.log||[]; j.log.push({date:todayISO(),note}); j.updated=todayISO(); save(); closeSheet(); setTimeout(()=>openJob(id),50); }
 
 /* ============================================================
    CONTACTS
@@ -1229,39 +922,50 @@ function logActivity(id){ const note=prompt("Log note:"); if(!note)return; const
 let contactFilter="all", contactSearch="";
 function viewContacts(){
   const p=P(); const dups=findAllDuplicates(); let list=[...p.contacts];
-  if(contactSearch.trim()) list=list.filter(c=>matchesSearch(contactSearch,[c.name,c.company,c.role,c.email]));
+  if(contactSearch.trim()) list=list.filter(c=>matchesSearch(contactSearch,[c.name,c.company,c.role,c.email,c.phone,c.linkedinUrl,c.status]));
   if(contactFilter==="pipeline") list=list.filter(c=>c.type==="pipeline");
   else if(contactFilter==="network") list=list.filter(c=>c.type==="network");
-  else if(contactFilter==="active") list=list.filter(c=>["Planned","Sent / awaiting reply","Replied / live"].includes(c.status));
-  list.sort((a,b)=>(b.updated||"").localeCompare(a.updated||""));
-  const chips=[["all","All"],["active","Active"],["pipeline","Pipeline"],["network","Network"]];
+  else if(contactFilter==="active") list=list.filter(c=>["Planned","Sent / awaiting reply","Replied / live","Interview / process"].includes(c.status));
+  else if(contactFilter==="overdue") list=list.filter(c=>isContactOverdue(c)||isContactDueToday(c));
+  list.sort((a,b)=>{
+    const ao=isContactOverdue(a)?2:isContactDueToday(a)?1:0, bo=isContactOverdue(b)?2:isContactDueToday(b)?1:0;
+    if(bo!==ao) return bo-ao;
+    return (a.nextTouchDate||"9999").localeCompare(b.nextTouchDate||"9999") || (b.updated||"").localeCompare(a.updated||"");
+  });
+  const chips=[["all","All"],["overdue","Due / overdue"],["active","Active"],["pipeline","Pipeline"],["network","Network"]];
   let h=`<div class="row between"><h1>Contacts</h1><button class="btn primary sm" onclick="openContact()">+ Add</button></div>`;
-  h+=`<input class="in searchbar" id="contactSearch" type="search" placeholder="Search name, company, role…" value="${esc(contactSearch)}" oninput="setContactSearch(this.value)" autocomplete="off">`;
+  h+=`<input class="in searchbar" id="contactSearch" type="search" placeholder="Search name, company, role, email…" value="${esc(contactSearch)}" oninput="setContactSearch(this.value)" autocomplete="off">`;
   if(dups.length) h+=`<div class="warnbox">Possible duplicates: ${dups.map(d=>esc(d[0].name)).join(", ")}. <a href="#" onclick="reviewDuplicates();return false;" style="color:#ff9b95;text-decoration:underline">Review</a></div>`;
   h+=`<div class="chips">`+chips.map(c=>`<button class="chip ${contactFilter===c[0]?'on':''}" onclick="setContactFilter('${c[0]}')">${c[1]}</button>`).join("")+`</div>`;
-  if(!list.length) return h+`<div class="card"><div class="empty">No contacts. They auto-link when you add a contact name to a job.</div></div>`;
+  if(!list.length) return h+`<div class="card"><div class="empty">No contacts in this view.</div></div>`;
   h+=`<div class="grid cols-2">`+list.map(contactCard).join("")+`</div>`; return h;
 }
 function setContactFilter(f){ contactFilter=f; saveUI(); render(); }
 function contactCard(c){
   const jobs=(c.jobIds||[]).map(id=>P().jobs.find(j=>j.id===id)).filter(Boolean);
   const last=c.timeline&&c.timeline.length?c.timeline[c.timeline.length-1]:null;
-  const sCls=c.status==="Planned"?"amber":c.status==="Sent / awaiting reply"?"blue":c.status==="Replied / live"?"green":"";
+  const sCls=isContactOverdue(c)?"red":isContactDueToday(c)?"amber":c.status==="Planned"?"amber":c.status==="Sent / awaiting reply"?"blue":c.status==="Replied / live"?"green":"";
   return `<div class="card tap" onclick="openContact('${c.id}')"><div class="row between"><div style="min-width:0"><div style="font-weight:700">${esc(c.name)}</div><div class="muted">${esc(c.company||"")}${c.role?" · "+esc(c.role):""}</div></div><span class="pill ${c.type==='network'?'':'blue'}">${c.type}</span></div>
-    <div class="row wrap" style="margin-top:8px;gap:6px"><span class="pill ${sCls}">${esc(c.status)}</span>${jobs.length?`<span class="pill">${jobs.length} linked job${jobs.length>1?'s':''}</span>`:""}</div>
+    <div class="row wrap" style="margin-top:8px;gap:6px"><span class="pill ${sCls}">${esc(c.status)}</span>${jobs.length?`<span class="pill">${jobs.length} linked job${jobs.length>1?'s':''}</span>`:""}${c.nextTouchDate?`<span class="pill ${isContactOverdue(c)?'red':isContactDueToday(c)?'amber':''}">Next ${fmtDate(c.nextTouchDate)}</span>`:""}</div>
+    <div class="btnrow" style="margin-top:10px" onclick="event.stopPropagation()">${c.email?`<a class="btn sm ghost" href="${contactActionUrl('email',c.email)}">Email</a>`:""}${c.phone?`<a class="btn sm ghost" href="${contactActionUrl('phone',c.phone)}">Call</a>`:""}${c.linkedinUrl?`<a class="btn sm ghost" href="${contactActionUrl('linkedin',c.linkedinUrl)}" target="_blank">LinkedIn</a>`:""}</div>
     ${last?`<div class="tiny" style="margin-top:7px">Last: ${fmtDate(last.date)} — ${esc(last.note)}</div>`:""}</div>`;
 }
 function openContact(id){
-  const p=P(); const c=id?p.contacts.find(x=>x.id===id):{id:null,name:"",email:"",company:"",role:"",type:"pipeline",status:"Planned",jobIds:[],timeline:[]};
+  const p=P(); const c=id?p.contacts.find(x=>x.id===id):{id:null,name:"",email:"",phone:"",linkedinUrl:"",company:"",role:"",type:"pipeline",status:"Planned",lastTouchDate:"",nextTouchDate:todayISO(),followUpRule:"auto",jobIds:[],timeline:[]};
   const isNew=!id; const jobs=(c.jobIds||[]).map(jid=>p.jobs.find(j=>j.id===jid)).filter(Boolean);
-  const statuses=["Planned","Sent / awaiting reply","Replied / live","Dead / archive"];
+  const statuses=["Planned","Sent / awaiting reply","Replied / live","Interview / process","Dormant","Closed / not useful","Dead / archive"];
+  const actionButtons=!isNew?`<div class="btnrow" style="margin-bottom:12px">${c.email?`<a class="btn ghost" href="${contactActionUrl('email',c.email)}">Email</a>`:""}${c.phone?`<a class="btn ghost" href="${contactActionUrl('phone',c.phone)}">Call</a>`:""}${c.linkedinUrl?`<a class="btn ghost" href="${contactActionUrl('linkedin',c.linkedinUrl)}" target="_blank">LinkedIn</a>`:""}</div>`:"";
   const body=`
+    ${actionButtons}
     <label class="f">Name</label><input class="in" id="c_name" value="${esc(c.name)}">
     <div class="field2"><div><label class="f">Company</label><input class="in" id="c_company" value="${esc(c.company)}"></div><div><label class="f">Role</label><input class="in" id="c_role" value="${esc(c.role)}"></div></div>
     <label class="f">Email</label><input class="in" id="c_email" value="${esc(c.email)}">
+    <div class="field2"><div><label class="f">Phone</label><input class="in" id="c_phone" value="${esc(c.phone||"")}" placeholder="Optional"></div><div><label class="f">LinkedIn URL</label><input class="in" id="c_linkedin" value="${esc(c.linkedinUrl||"")}" placeholder="https://linkedin.com/in/..."></div></div>
     <div class="field2"><div><label class="f">Type</label><select class="in" id="c_type"><option value="pipeline" ${c.type==='pipeline'?'selected':''}>Pipeline</option><option value="network" ${c.type==='network'?'selected':''}>Network</option></select></div><div><label class="f">Status</label><select class="in" id="c_status">${statuses.map(s=>`<option ${c.status===s?'selected':''}>${s}</option>`).join("")}</select></div></div>
-    ${jobs.length?`<label class="f">Linked jobs</label>${jobs.map(j=>`<div class="muted" style="background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin-bottom:6px">${esc(j.company)} — ${esc(j.role)}</div>`).join("")}`:""}
-    ${!isNew?`<label class="f">Timeline</label><div class="reasons" style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px">${(c.timeline||[]).length?c.timeline.slice().reverse().map(t=>`<div>${fmtDate(t.date)} — ${esc(t.note)}</div>`).join(""):'<span class="tiny">No history yet.</span>'}</div><button class="btn sm ghost" style="margin-top:8px" onclick="logContact('${c.id}')">+ Add to timeline</button>`:""}
+    <div class="field2"><div><label class="f">Last touch</label><input class="in" id="c_lasttouch" type="date" value="${esc(c.lastTouchDate||"")}"></div><div><label class="f">Next touch</label><input class="in" id="c_nexttouch" type="date" value="${esc(c.nextTouchDate||defaultNextTouch(c.status,todayISO()))}"></div></div>
+    ${jobs.length?`<label class="f">Linked jobs</label>${jobs.map(j=>`<div class="row between" style="background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:8px"><div><b>${esc(j.company)}</b><div class="muted">${esc(j.role)}</div></div><button class="btn sm ghost" onclick="unlinkJobFromContact('${c.id}','${j.id}')">Unlink</button></div>`).join("")}`:""}
+    ${!isNew?`<button class="btn ghost full" onclick="openLinkJobPicker('${c.id}')">+ Link a job</button>`:""}
+    ${!isNew?`<label class="f">Timeline</label><div class="reasons" style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px">${(c.timeline||[]).length?c.timeline.slice().reverse().map(t=>`<div>${fmtDate(t.date)} — ${esc(t.note)}</div>`).join(""):'<span class="tiny">No history yet.</span>'}</div><button class="btn sm ghost" style="margin-top:8px" onclick="openContactNote('${c.id}')">+ Add note</button>`:""}
     <div class="btnrow" style="margin-top:16px"><button class="btn primary full" onclick="saveContact('${c.id||''}')">Save</button></div>
     ${!isNew?`<div class="btnrow" style="margin-top:8px"><button class="btn sm ghost" onclick="genContactMsg('${c.id}')">Generate message</button><button class="btn sm danger" onclick="deleteContact('${c.id}')">Delete</button></div>`:""}`;
   sheet(isNew?"Add contact":esc(c.name),body);
@@ -1271,12 +975,32 @@ function saveContact(id){
   if(!name){ toast("Name required"); return; }
   const dup=findContactDuplicate(name,email,id||null);
   if(dup && !id){ if(!confirm(`Possible duplicate of "${dup.name}". Add anyway?`)) return; }
-  const data={name,email,company:get("c_company"),role:get("c_role"),type:$("#c_type").value,status:$("#c_status").value,updated:todayISO()};
-  if(id) Object.assign(p.contacts.find(x=>x.id===id),data); else p.contacts.push({id:uid(),jobIds:[],timeline:[],...data});
+  const status=$("#c_status").value; const last=get("c_lasttouch")||todayISO(); const next=get("c_nexttouch")||defaultNextTouch(status,last);
+  const data={name,email,phone:get("c_phone"),linkedinUrl:get("c_linkedin"),company:get("c_company"),role:get("c_role"),type:$("#c_type").value,status,lastTouchDate:last,nextTouchDate:next,followUpRule:"manual",updated:todayISO()};
+  if(id){
+    const c=p.contacts.find(x=>x.id===id); const oldStatus=c.status; const oldNext=c.nextTouchDate; Object.assign(c,data);
+    if(oldStatus!==status){ c.timeline=c.timeline||[]; c.timeline.push({date:todayISO(),note:`Status changed from “${oldStatus||'blank'}” to “${status}”. Next touch: ${fmtDate(next)}.`}); }
+    else if(oldNext!==next){ c.timeline=c.timeline||[]; c.timeline.push({date:todayISO(),note:`Next touch changed to ${fmtDate(next)}.`}); }
+  } else {
+    p.contacts.push({id:uid(),jobIds:[],timeline:[{date:todayISO(),note:`Contact created. Status: ${status}. Next touch: ${fmtDate(next)}.`}],...data});
+  }
   save(); closeSheet(); render(); toast("Saved");
 }
-function deleteContact(id){ if(!confirm("Delete contact?"))return; const p=P(); p.contacts=p.contacts.filter(c=>c.id!==id); p.jobs.forEach(j=>{if(j.contactId===id)j.contactId="";}); save(); closeSheet(); render(); }
-function logContact(id){ const note=prompt("Timeline note:"); if(!note)return; const c=P().contacts.find(x=>x.id===id); c.timeline.push({date:todayISO(),note}); c.updated=todayISO(); save(); openContact(id); }
+function deleteContact(id){ if(!confirm("Delete contact?"))return; const p=P(); const idx=p.contacts.findIndex(c=>c.id===id); if(idx<0)return; const contact=JSON.parse(JSON.stringify(p.contacts[idx])); const affected=p.jobs.filter(j=>j.contactId===id).map(j=>j.id); p.contacts.splice(idx,1); p.jobs.forEach(j=>{if(j.contactId===id)j.contactId="";}); save(); closeSheet(); render(); toastUndo("Contact deleted",()=>{ const p=P(); p.contacts.splice(Math.min(idx,p.contacts.length),0,contact); p.jobs.forEach(j=>{ if(affected.includes(j.id)) j.contactId=id; }); save(); render(); toast("Restored"); }); }
+function openContactNote(id){
+  const body=`<label class="f">Timeline note</label><textarea class="in" id="contact_note" placeholder="What happened?"></textarea><div class="btnrow" style="margin-top:12px"><button class="btn primary full" onclick="saveContactNote('${id}')">Save note</button></div>`;
+  sheet("Add contact note",body);
+}
+function saveContactNote(id){ const note=$("#contact_note").value.trim(); if(!note){toast("Note required");return;} const c=P().contacts.find(x=>x.id===id); c.timeline=c.timeline||[]; c.timeline.push({date:todayISO(),note}); c.lastTouchDate=todayISO(); c.updated=todayISO(); save(); closeSheet(); setTimeout(()=>openContact(id),50); }
+function logContact(id){ openContactNote(id); }
+function openLinkJobPicker(contactId){
+  const p=P(); const c=p.contacts.find(x=>x.id===contactId); const linked=new Set(c.jobIds||[]);
+  const jobs=p.jobs.filter(j=>!linked.has(j.id)).sort((a,b)=>(b.updated||"").localeCompare(a.updated||""));
+  const body=jobs.length?jobs.map(j=>`<div class="card"><div><b>${esc(j.company)}</b><div class="muted">${esc(j.role)}</div><div class="tiny">${esc(j.stage||"")} ${j.ref?"· Ref "+esc(j.ref):""}</div></div><button class="btn primary full" style="margin-top:10px" onclick="linkJobToContact('${contactId}','${j.id}')">Link this job</button></div>`).join(""):`<div class="empty">No unlinked jobs available.</div>`;
+  sheet("Link job to contact",body);
+}
+function linkJobToContact(contactId,jobId){ const p=P(); const c=p.contacts.find(x=>x.id===contactId), j=p.jobs.find(x=>x.id===jobId); if(!c||!j)return; c.jobIds=c.jobIds||[]; if(!c.jobIds.includes(jobId)) c.jobIds.push(jobId); j.contactId=contactId; c.timeline=c.timeline||[]; c.timeline.push({date:todayISO(),note:`Linked job: ${j.company} — ${j.role}.`}); c.updated=todayISO(); save(); closeSheet(); setTimeout(()=>openContact(contactId),50); }
+function unlinkJobFromContact(contactId,jobId){ const p=P(); const c=p.contacts.find(x=>x.id===contactId), j=p.jobs.find(x=>x.id===jobId); if(!c||!j)return; c.jobIds=(c.jobIds||[]).filter(id=>id!==jobId); if(j.contactId===contactId)j.contactId=""; c.timeline=c.timeline||[]; c.timeline.push({date:todayISO(),note:`Unlinked job: ${j?j.company:""} — ${j?j.role:""}.`}); c.updated=todayISO(); save(); closeSheet(); setTimeout(()=>openContact(contactId),50); }
 function reviewDuplicates(){
   const dups=findAllDuplicates();
   const body=dups.map(([a,b])=>`<div class="card"><div class="muted">Possible duplicate</div><div class="row between" style="margin-top:6px"><b>${esc(a.name)}</b><b>${esc(b.name)}</b></div><div class="btnrow" style="margin-top:10px"><button class="btn sm" onclick="mergeContacts('${a.id}','${b.id}');closeSheet();render();toast('Merged')">Keep left</button><button class="btn sm" onclick="mergeContacts('${b.id}','${a.id}');closeSheet();render();toast('Merged')">Keep right</button></div></div>`).join("");
@@ -1294,6 +1018,9 @@ function viewPrep(){
     ${genBtn("cover","Cover letter")}${genBtn("linkedin","LinkedIn message")}
     ${genBtn("interview","Interview prep sheet")}${genBtn("star","STAR answer pack")}
     ${genBtn("salary","Salary clarification")}${genBtn("driving","Driving / travel clarification")}</div>`;
+  const prepJobs=p.jobs.filter(j=>j.interviewDate || j.stage==="Interview" || (j.decision||"").startsWith("Prepare"));
+  h+=`<h2 class="sec">Interview prep workspace</h2>`;
+  h+= prepJobs.length ? prepJobs.map(j=>`<div class="card tap" onclick="openInterviewPrep('${j.id}')"><div class="row between"><div><b>${esc(j.company)}</b><div class="muted">${esc(j.role)}</div></div><span class="pill blue">Prepare</span></div><div class="tiny" style="margin-top:6px">${j.interviewDate?esc(interviewLabel(j)+" · "+fmtDateTime(j.interviewDate)):"No interview date set"}${j.interviewPrepUpdated?" · Prep saved "+esc(fmtDate(j.interviewPrepUpdated)):""}</div></div>`).join("") : `<div class="card"><div class="empty">No interview-stage jobs yet. Open a job and tap Prepare interview when needed.</div></div>`;
   h+=`<h2 class="sec">CV variants</h2>`;
   h+= p.cvVariants.length? p.cvVariants.map(v=>`<div class="card"><div class="row between"><b>${esc(v.name)}</b><button class="btn sm ghost" onclick="editVariant('${v.id}')">Edit</button></div><div class="muted" style="margin-top:5px">${esc(v.note||"")}</div></div>`).join("") : `<div class="card"><div class="empty">No CV variants yet.</div></div>`;
   h+=`<button class="btn sm full" style="margin-top:4px" onclick="editVariant()">+ Add CV variant</button>`;
@@ -1318,6 +1045,78 @@ function editStar(id){ const p=P(); const s=id?p.starBank.find(x=>x.id===id):{id
 function saveStar(id){ const p=P(); const d={title:$("#s_title").value.trim(),situation:$("#s_s").value.trim(),task:$("#s_t").value.trim(),action:$("#s_a").value.trim(),result:$("#s_r").value.trim(),updated:todayISO()};
   if(id) Object.assign(p.starBank.find(x=>x.id===id),d); else p.starBank.push({id:uid(),...d}); save(); closeSheet(); render(); }
 
+
+const INTERVIEW_PREP_SECTIONS = [
+  ["roleFacts","Role facts"],
+  ["whyMe","Why me"],
+  ["whyEmployer","Why this employer"],
+  ["technicalExamples","Technical examples"],
+  ["starAnswers","STAR answers to use"],
+  ["drivingTravel","Driving / travel clarification"],
+  ["disclosureHandling","Disclosure / DBS handling"],
+  ["questionsToAsk","Questions to ask"],
+  ["redFlags","Red flags to clarify"],
+  ["pitch","Final 60-second pitch"],
+  ["travelPlan","Travel plan"],
+  ["finalCrib","Final crib sheet"]
+];
+function defaultInterviewPrep(j){
+  const p=P(), m=p.meta, dr=drivingRisk(j); const c=contactForJob(j);
+  const ev=p.evidence.slice(0,4).map(e=>"- "+e.text).join("\n") || "- Abbott/Sysmex/Royal Navy engineering evidence. Add sharper bullets in Prep.";
+  const stars=p.starBank.length ? p.starBank.map(s=>`- ${s.title}: ${s.result||s.action||"finish this STAR example"}`).join("\n") : "- Add STAR examples in Prep before interview.";
+  const salary=j.salary?money(j.salary):"not confirmed";
+  const site=j.siteAddress||j.interviewLocation||"not confirmed";
+  const cv=j.cvUsed||"confirm which CV was submitted";
+  const dbs=j.dbsLikely||"Unknown";
+  return {
+    roleFacts:`Company: ${j.company||"?"}\nRole: ${j.role||"?"}\nSite/location: ${site}\nSalary: ${salary}\nStage: ${j.stage||"?"}\nInterview: ${j.interviewDate?fmtDateTime(j.interviewDate):"not set"}${j.interviewType?" · "+j.interviewType:""}\nContact: ${c?c.name:"not linked"}\nCV used: ${cv}`,
+    whyMe:`Lead with a fixed-site engineering fit. Emphasise medical diagnostics, automated laboratory equipment, electro-mechanical fault finding, RCA/log analysis, documentation discipline and Royal Navy safety-critical engineering.\n\nEvidence to use:\n${ev}`,
+    whyEmployer:`Keep this specific. Mention the employer's site, product, sector and why the role is a practical fit. Do not use generic praise.\n\nDraft:\nI am interested because this is a hands-on engineering role where reliability, documentation and quick fault recovery matter. The fixed-site / controlled engineering environment fits my current search better than field-service work.` ,
+    technicalExamples:`Prepare examples around:\n- PCR / analyser troubleshooting and downtime recovery.\n- Robotic or automated sample-handling faults.\n- Log-file analysis and root cause investigation.\n- Planned maintenance and compliance documentation.\n- Royal Navy electro-mechanical systems under pressure.\n\nFor each: problem, diagnostic steps, fix, verification, documentation.` ,
+    starAnswers:stars,
+    drivingTravel:`Current risk rating: ${dr.risk}.\nClarify directly if needed:\n- Is this fixed-site, depot, lab, hospital or manufacturing based?\n- Is a full UK driving licence essential day-to-day?\n- Is there field travel, company vehicle, call-out territory or routine site-to-site driving?\n\nControlled wording:\nBefore progressing, could I confirm whether the role is fixed-site or whether it requires regular driving/territory travel? I want to make sure the practical arrangements fit before we go further.` ,
+    disclosureHandling:`DBS likely: ${dbs}.\nDisclosure status: ${j.disclosureStatus||"Not needed"}.\n\nDo not volunteer unnecessary detail early. If asked, keep wording factual, brief and tied to relevance. For NHS/regulated roles, use the separate prepared disclosure note at the correct stage only.` ,
+    questionsToAsk:`- What does a normal shift/day look like?\n- What equipment or systems would I support first?\n- What are the common failure modes?\n- How is escalation handled?\n- What documentation or quality system is used?\n- What training is provided?\n- Is the role fixed-site, and what travel/driving is expected?\n- What are the next steps and timescale after interview?`,
+    redFlags:`Clarify before accepting or progressing too far:\n- Driving/licence requirement unclear.\n- Excessive travel or territory work.\n- Salary below target.\n- Long/public-transport-unworkable commute.\n- DBS/disclosure stage unclear.\n- Job title sounds fixed-site but duties are actually field/mobile.` ,
+    pitch:`I am an electro-mechanical engineer with medical diagnostics field-service experience and a Royal Navy engineering background. I have worked on PCR and laboratory analyser platforms, dealt with urgent faults, used logs and structured diagnostics, and maintained high standards of documentation and safety. I am now focused on a fixed-site engineering role where I can use that fault-finding and reliability experience without a field-service territory.` ,
+    travelPlan:`Interview location/link: ${j.interviewLocation||"not set"}.\nCommute estimate: ${j.commuteMins?j.commuteMins+" minutes one-way":"not checked"}.\nAction: check public transport route, arrival buffer, site entrance, ID requirements and who to ask for on arrival.` ,
+    finalCrib:`Opening: calm, concise, engineering-first.\nLead examples: Abbott diagnostics, Sysmex, Royal Navy safety-critical maintenance.\nMust clarify: driving/travel, shift pattern, training, salary/next stage.\nAvoid: over-explaining personal/legal issues unless directly asked and relevant.\nClose: ask for timeline and whether they need anything further.`
+  };
+}
+function interviewPrepTextFromData(j,data){
+  return `INTERVIEW PREP WORKSPACE — ${j.company}: ${j.role}\n\n` + INTERVIEW_PREP_SECTIONS.map(([k,label])=>`${label.toUpperCase()}\n${(data&&data[k])||""}`).join("\n\n---\n\n");
+}
+function openInterviewPrep(id){
+  const j=P().jobs.find(x=>x.id===id); if(!j){toast("Job not found");return;}
+  const data=Object.assign(defaultInterviewPrep(j),j.interviewPrep||{});
+  let body=`<p class="muted">Editable interview pack for this role. Save it here, then copy the final crib sheet before the interview.</p>`;
+  body+=`<div class="card"><div class="kv"><b>Interview:</b> ${j.interviewDate?esc(fmtDateTime(j.interviewDate)):"not set"}${j.interviewType?" · "+esc(j.interviewType):""}</div><div class="kv"><b>Best next:</b> ${esc(bestNextAction(j))}</div><div class="kv"><b>Driving risk:</b> ${esc(drivingRisk(j).risk)}</div></div>`;
+  body+=INTERVIEW_PREP_SECTIONS.map(([k,label])=>`<label class="f">${label}</label><textarea class="in" id="prep_${k}" style="min-height:${k==='finalCrib'||k==='pitch'?110:130}px">${esc(data[k]||"")}</textarea>`).join("");
+  body+=`<div class="btnrow" style="margin-top:16px"><button class="btn primary full" onclick="saveInterviewPrep('${id}')">Save interview prep</button><button class="btn full" onclick="copyInterviewPrep('${id}')">Share full prep pack</button><button class="btn ghost full" onclick="runGen('interview','${id}')">Generate plain prep sheet</button></div><p class="tiny" style="margin-top:8px">This is not sent anywhere. It saves only inside this profile.</p>`;
+  sheet("Prepare interview",body);
+}
+function currentInterviewPrepData(j){
+  const base=Object.assign(defaultInterviewPrep(j),j.interviewPrep||{});
+  INTERVIEW_PREP_SECTIONS.forEach(([k])=>{ const el=$("#prep_"+k); if(el) base[k]=el.value.trim(); });
+  return base;
+}
+function saveInterviewPrep(id){
+  const j=P().jobs.find(x=>x.id===id); if(!j){toast("Job not found");return;}
+  j.interviewPrep=currentInterviewPrepData(j); j.interviewPrepUpdated=todayISO(); j.updated=todayISO();
+  if(!j.interviewNotes) j.interviewNotes="Interview prep workspace started.";
+  j.log=j.log||[]; j.log.push({date:todayISO(),note:"Interview prep workspace saved."});
+  save(); toast("Interview prep saved"); render(); setTimeout(()=>openInterviewPrep(id),50);
+}
+function copyInterviewPrep(id){ shareInterviewPrep(id); }
+function shareInterviewPrep(id){
+  const j=P().jobs.find(x=>x.id===id); if(!j){toast("Job not found");return;}
+  const text=interviewPrepTextFromData(j,currentInterviewPrepData(j));
+  const title=`Interview prep — ${j.company||"Job"}`;
+  if(navigator.share){ navigator.share({title,text}).then(()=>toast("Shared")).catch(()=>copyTextFallback(text,"Copied instead")); }
+  else copyTextFallback(text,"Copied");
+}
+function copyTextFallback(text,msg){ if(navigator.clipboard) navigator.clipboard.writeText(text).then(()=>toast(msg||"Copied")).catch(()=>showGen("Text",text)); else showGen("Text",text); }
+
 function pickJobForGen(kind){
   if(kind==="star") return runGen(kind,null);
   const jobs=P().jobs.filter(j=>!["Archive","Reject"].includes(j.decision));
@@ -1326,7 +1125,7 @@ function pickJobForGen(kind){
 }
 function genFromJob(id){
   const kinds=[["application","Application email"],["cover","Cover letter"],["recruiter","Recruiter follow-up"],["linkedin","LinkedIn message"],["salary","Salary clarification"],["driving","Driving / travel clarification"],["interview","Interview prep sheet"]];
-  sheet("Generate",kinds.map(k=>`<button class="btn full" style="margin-bottom:8px" onclick="runGen('${k[0]}','${id}')">${k[1]}</button>`).join(""));
+  sheet("Generate",`<button class="btn primary full" style="margin-bottom:8px" onclick="openInterviewPrep('${id}')">Prepare interview workspace</button>`+kinds.map(k=>`<button class="btn full" style="margin-bottom:8px" onclick="runGen('${k[0]}','${id}')">${k[1]}</button>`).join(""));
 }
 function greet(first,tone){ return tone==="Formal"?("Dear "+(first&&first!=="there"?first:"Hiring Manager")+",") : ("Hi "+first+","); }
 function signoff(tone,name){ return tone==="Formal"?("Yours sincerely,\n"+name) : tone==="Warm"?("Best wishes,\n"+name):("Thanks,\n"+name); }
@@ -1362,7 +1161,7 @@ function runGen(kind,jobId){
     case "driving":
       out=`${greet(first,tone)}\n\nOne practical question on the ${j.role} role: is this fixed-site, or does it involve a driving territory or call-out rota requiring a personal vehicle? ${m.restrictions?("Note: "+m.restrictions+". "):""}I want to make sure the role fits before we go further.\n\n${signoff(tone,name)}`; title="Driving / travel clarification"; break;
     case "interview":
-      out=`INTERVIEW PREP — ${j.company}: ${j.role}\n\nRole snapshot:\n- Site: ${j.siteAddress||"?"}\n- Salary: ${money(j.salary)}\n- Main risk to clarify: ${j.mainRisk||"?"}\n\nLikely questions:\n1. Walk through a difficult problem you solved (use STAR).\n2. How do you handle process and documentation?\n3. Why this role / why ${m.workPref}?\n\nEvidence to lead with:\n${ev}\n\nQuestions for them:\n- Shift pattern / on-call expectations?\n- Travel %? Is driving essential day-to-day?\n- Team size and escalation path?\n\nSTAR examples ready: ${p.starBank.map(s=>s.title).join("; ")||"none yet — build these"}`; title="Interview prep sheet"; break;
+      out=interviewPrepTextFromData(j,Object.assign(defaultInterviewPrep(j),j.interviewPrep||{})); title="Interview prep sheet"; break;
     case "star":
       out= p.starBank.length? p.starBank.map(s=>`■ ${s.title}\nSituation: ${s.situation||"?"}\nTask: ${s.task||"?"}\nAction: ${s.action||"?"}\nResult: ${s.result||"?"}`).join("\n\n") : "No STAR examples saved yet. Add them under Prep."; title="STAR answer pack"; break;
   }
@@ -1387,11 +1186,12 @@ function viewMore(){
   h+=`<h2 class="sec">Review &amp; reminders</h2>
     <div class="card tap" onclick="openWeekly()"><div class="row between"><b>Weekly review</b><span class="pill blue">Open</span></div></div>
     <div class="card tap" onclick="openApplicationLog()"><div class="row between"><b>Application log</b><span class="pill blue">Newest</span></div><div class="muted" style="margin-top:5px">Submitted roles, evidence, chase dates and statuses.</div></div>
+    <div class="card tap" onclick="openDataHealth()"><div class="row between"><b>Data health checker</b><span class="pill red">Audit</span></div><div class="muted" style="margin-top:5px">Missing role titles, evidence, contacts, driving risk and next actions.</div></div>
     <div class="card tap" onclick="exportICS()"><div class="row between"><b>Download calendar reminders (.ics)</b><span class="pill">↓</span></div><div class="muted" style="margin-top:5px">All job due dates as calendar events.</div></div>`;
   h+=`<h2 class="sec">Admin</h2><div class="card">
-      <div class="btnrow"><button class="btn" onclick="backupData()">Backup my data</button><button class="btn" onclick="$('#restoreFile').click()">Restore from backup</button><button class="btn" onclick="exportForAI()">Export for ChatGPT/Claude review</button><button class="btn" onclick="exportJobsCSV()">Export jobs CSV</button></div>
+      <div class="btnrow"><button class="btn" onclick="backupData()">Backup my data</button><button class="btn" onclick="$('#restoreFile').click()">Restore from backup</button><button class="btn" onclick="exportForAI()">Export for ChatGPT/Claude review</button><button class="btn" onclick="exportJobsCSV()">Export full CSV</button><button class="btn" onclick="openDataHealth()">Data health</button><button class="btn" onclick="openWeeklySummaryExport()">Weekly summary</button><button class="btn" onclick="enableAppBadge()">Enable app badge</button></div>
       <div class="divider"></div>
-      <div class="btnrow"><button class="btn primary" onclick="importLatestApplications()">Import latest verified applications</button><button class="btn ghost" onclick="exportProfile()">Export this profile</button><button class="btn ghost" onclick="$('#profImport').click()">Import a profile</button><button class="btn ghost" onclick="$('#v12File').click()">Import v12 JSON</button></div>
+      <div class="btnrow"><button class="btn primary" onclick="importLatestApplications()">Import demo applications</button><button class="btn" onclick="importUsefulContacts()">Import useful contacts</button><button class="btn ghost" onclick="exportProfile()">Export this profile</button><button class="btn ghost" onclick="$('#profImport').click()">Import a profile</button><button class="btn ghost" onclick="$('#v12File').click()">Import v12 JSON</button></div>
       <input type="file" id="restoreFile" accept=".json,application/json" class="hidden" onchange="smartImport(event)">
       <input type="file" id="profImport" accept=".json,application/json" class="hidden" onchange="smartImport(event)">
       <input type="file" id="v12File" accept=".json,application/json" class="hidden" onchange="importV12(event)">
@@ -1422,6 +1222,9 @@ function openProfileSetup(){
     <label class="f">Restrictions / deal-breakers</label><textarea class="in" id="m_restr">${esc(m.restrictions)}</textarea>
     <label class="f">Disclosure / DBS / clearance notes <span class="opt">(private, on-device)</span></label><textarea class="in" id="m_disc">${esc(m.disclosureNotes)}</textarea>
     <div class="field2"><div><label class="f">Letter tone</label><select class="in" id="m_tone">${sel(m.tone,TONES)}</select></div><div><label class="f">Stale after (days)</label><input class="in" id="m_stale" type="number" value="${esc(m.staleThresholdDays)}"></div></div>
+
+    <label class="f">Nearby towns for advert parsing <span class="opt">(comma separated)</span></label><textarea class="in" id="m_towns" placeholder="Leeds, Bradford, Wakefield, York">${esc(m.nearbyTowns||"")}</textarea>
+    <label class="f">Weekly summary style</label><select class="in" id="m_weekly"><option ${((m.weeklySummaryStyle||"Personal review")==="Personal review")?'selected':''}>Personal review</option><option ${m.weeklySummaryStyle==="UC journal"?'selected':''}>UC journal</option><option ${m.weeklySummaryStyle==="Recruiter update"?'selected':''}>Recruiter update</option></select>
     <button class="btn primary full" style="margin-top:16px" onclick="saveProfileSetup()">Save profile</button>`;
   sheet("Profile Setup",body);
 }
@@ -1434,7 +1237,7 @@ function saveProfileSetup(){
   m.drivingAvailable=$("#m_drive").value==="yes"; m.workPref=$("#m_work").value;
   m.targetRoles=g("m_roles"); m.sectors=g("m_sectors"); m.keySkills=g("m_skills");
   m.keyExperience=g("m_exp"); m.qualifications=g("m_quals"); m.restrictions=g("m_restr");
-  m.disclosureNotes=g("m_disc"); m.tone=$("#m_tone").value; m.staleThresholdDays=Number(g("m_stale"))||10;
+  m.disclosureNotes=g("m_disc"); m.tone=$("#m_tone").value; m.staleThresholdDays=Number(g("m_stale"))||10; m.nearbyTowns=g("m_towns"); m.weeklySummaryStyle=$("#m_weekly").value;
   save(); closeSheet(); render(); toast("Profile saved");
 }
 
@@ -1445,14 +1248,14 @@ function openProfiles(){
     ${root.profiles.map(p=>{ const latest=(p.jobs||[]).map(j=>j.updated||j.appliedDate||"").sort().pop()||""; return `<div class="card ${p.id===root.activeProfileId?'':'tap'}" ${p.id===root.activeProfileId?'':`onclick="switchProfile('${p.id}')"`}>
       <div class="row between"><div><b>${esc(p.meta.name||"Unnamed")}</b><div class="muted">${p.jobs.length} jobs · ${p.contacts.length} contacts · updated ${fmtDate(latest)}</div></div>
       ${p.id===root.activeProfileId?'<span class="pill green">Active</span>':'<span class="pill blue">Switch</span>'}</div></div>`}).join("")}
-    <div class="btnrow" style="margin-top:12px"><button class="btn" onclick="addProfileFlow()">+ New profile</button><button class="btn primary" onclick="importLatestApplications()">Import latest applications</button><button class="btn ghost" onclick="useSampleFromMenu()">+ New sample profile</button></div>
+    <div class="btnrow" style="margin-top:12px"><button class="btn" onclick="addProfileFlow()">+ New profile</button><button class="btn primary" onclick="importLatestApplications()">Import demo applications</button><button class="btn" onclick="importUsefulContacts()">Import useful contacts</button><button class="btn ghost" onclick="useSampleFromMenu()">+ New sample profile</button></div>
     <div class="divider"></div>
     <button class="btn danger full" onclick="deleteActiveProfile()">Delete active profile</button>`;
   sheet("Profiles",body);
 }
 function switchProfile(id){ root.activeProfileId=id; save(); closeSheet(); TAB="today"; render(); toast("Switched to "+(P().meta.name||"profile")); }
 function addProfileFlow(){ const name=prompt("Name for the new profile:"); if(!name)return; const p=blankProfile(name); root.profiles.push(p); root.activeProfileId=p.id; save(); closeSheet(); TAB="more"; render(); setTimeout(openProfileSetup,80); }
-function useSampleFromMenu(){ const p=sampleEngineeringProfile(); root.profiles.push(p); root.activeProfileId=p.id; save(); closeSheet(); TAB="today"; render(); toast("Michael profile added"); }
+function useSampleFromMenu(){ const p=sampleEngineeringProfile(); root.profiles.push(p); root.activeProfileId=p.id; save(); closeSheet(); TAB="today"; render(); toast("Demo profile added"); }
 function deleteActiveProfile(){
   if(!confirm("Delete the active profile and all its jobs/contacts? Back up first.")) return;
   const id=root.activeProfileId; root.profiles=root.profiles.filter(p=>p.id!==id);
@@ -1461,6 +1264,83 @@ function deleteActiveProfile(){
 }
 
 /* ---------- Weekly review ---------- */
+
+function weekStartISO(){ const d=new Date(todayISO()+"T00:00:00"); const day=d.getDay()||7; d.setDate(d.getDate()-day+1); return d.toISOString().slice(0,10); }
+function recentJobs(days=7){ return P().jobs.filter(j=> (j.appliedDate&&daysBetween(todayISO(),j.appliedDate)<=days) || (j.updated&&daysBetween(todayISO(),j.updated)<=days)); }
+function weeklyCompletedActions(){
+  const items=[];
+  (P().jobs||[]).forEach(j=>{
+    (j.log||[]).forEach(l=>{
+      if(l.date && daysBetween(todayISO(),l.date)<=7) items.push({date:l.date,type:"Job",label:`${j.company||"Unknown company"} — ${j.role||"Unknown role"}`,note:l.note||"Logged job activity"});
+    });
+    if(j.appliedDate && daysBetween(todayISO(),j.appliedDate)<=7) items.push({date:j.appliedDate,type:"Application",label:`${j.company||"Unknown company"} — ${j.role||"Unknown role"}`,note:`Application recorded${j.ref?`, ref ${j.ref}`:""}${j.source?`, source ${j.source}`:""}`});
+    if(isClosedJob(j) && j.updated && daysBetween(todayISO(),j.updated)<=7){
+      const outcome=j.decision || j.stage || "closed";
+      items.push({date:j.updated,type:"Outcome",label:`${j.company||"Unknown company"} — ${j.role||"Unknown role"}`,note:`Marked ${outcome}`});
+    }
+  });
+  (P().contacts||[]).forEach(c=>{
+    (c.timeline||[]).forEach(t=>{
+      if(t.date && daysBetween(todayISO(),t.date)<=7) items.push({date:t.date,type:"Contact",label:`${c.name||"Unnamed contact"}${c.company?` (${c.company})`:""}`,note:t.note||`Contact activity: ${c.status||"updated"}`});
+    });
+  });
+  const seen=new Set();
+  return items.sort((a,b)=>(b.date||"").localeCompare(a.date||"")).filter(x=>{ const k=[x.date,x.type,x.label,x.note].join("|"); if(seen.has(k)) return false; seen.add(k); return true; });
+}
+function neutralNextStep(){
+  const pref=(S().workPref||"No preference").toLowerCase();
+  if(pref.includes("remote")) return "Continue applying for suitable remote roles and updating the tracker.";
+  if(pref.includes("hybrid")) return "Continue applying for suitable hybrid roles and updating the tracker.";
+  if(pref.includes("fixed")||pref.includes("onsite")||pref.includes("on-site")) return "Continue applying for suitable onsite roles and updating the tracker.";
+  return "Continue applying for suitable roles and updating the tracker.";
+}
+function weeklySummaryText(style){
+  const p=P(), m=p.meta||{}, name=m.name||"";
+  style=style||S().weeklySummaryStyle||"Personal review";
+  const apps=p.jobs.filter(j=>j.appliedDate && daysBetween(todayISO(),j.appliedDate)<=7).sort((a,b)=>(b.appliedDate||"").localeCompare(a.appliedDate||""));
+  const completed=weeklyCompletedActions();
+  const chases=p.jobs.filter(j=>!isClosedJob(j) && calcChaseDate(j) && daysBetween(todayISO(),calcChaseDate(j))>=0).sort((a,b)=>(calcChaseDate(a)||"").localeCompare(calcChaseDate(b)||""));
+  const contacts=p.contacts.filter(c=>isContactOverdue(c)||isContactDueToday(c)||["Sent / awaiting reply","Planned"].includes(c.status));
+  const interviews=p.jobs.filter(j=>j.interviewDate || j.stage==="Interview");
+  const closed=p.jobs.filter(j=>isClosedJob(j) && (j.updated&&daysBetween(todayISO(),j.updated)<=7));
+  const linesOut=[];
+  const bulletJob=j=>`- ${j.company} — ${j.role}${j.appliedDate?` (applied ${fmtDate(j.appliedDate)})`:""}${j.ref?`, ref ${j.ref}`:""}${j.source?`, source: ${j.source}`:""}`;
+  if(style==="UC journal"){
+    linesOut.push(`Weekly job-search update — ${new Date().toLocaleDateString("en-GB")}`);
+    linesOut.push("");
+    linesOut.push("I have kept a dated record of applications, recruiter contact and follow-up actions this week.");
+    linesOut.push("");
+    linesOut.push(`Applications made this week (${apps.length}):`); linesOut.push(apps.length?apps.map(bulletJob).join("\n"):"- None recorded this week.");
+    linesOut.push(""); linesOut.push(`Actions completed this week (${completed.length}):`); linesOut.push(completed.length?completed.slice(0,20).map(a=>`- ${fmtDate(a.date)} — ${a.type}: ${a.label} — ${a.note}`).join("\n"):"- None logged this week.");
+    linesOut.push(""); linesOut.push(`Follow-ups / chases currently due (${chases.length}):`); linesOut.push(chases.length?chases.map(j=>`- ${j.company} — ${bestNextAction(j)}`).join("\n"):"- None currently due.");
+    linesOut.push(""); linesOut.push(`Recruiter / contact follow-ups currently due (${contacts.length}):`); linesOut.push(contacts.length?contacts.map(c=>`- ${c.name}${c.company?` (${c.company})`:""} — ${c.status}${c.nextTouchDate?`, next touch ${fmtDate(c.nextTouchDate)}`:""}`).join("\n"):"- None currently due.");
+    linesOut.push(""); linesOut.push(`Interview / assessment preparation (${interviews.length}):`); linesOut.push(interviews.length?interviews.map(j=>`- ${j.company} — ${interviewLabel(j)||"interview/prep stage"}`).join("\n"):"- No interviews currently booked.");
+    linesOut.push(""); linesOut.push("Next steps:"); linesOut.push(chases.slice(0,5).map(j=>`- ${bestNextAction(j)} (${j.company})`).join("\n") || `- ${neutralNextStep()}`);
+  } else if(style==="Recruiter update"){
+    linesOut.push(`Job-search status update${name?` — ${name}`:""}`); linesOut.push("");
+    linesOut.push(`Current focus: ${m.targetRoles||"suitable engineering roles"}.`);
+    linesOut.push(""); linesOut.push(`Recent applications (${apps.length}):`); linesOut.push(apps.length?apps.map(bulletJob).join("\n"):"- None this week.");
+    linesOut.push(""); linesOut.push(`Activity completed this week (${completed.length}):`); linesOut.push(completed.length?completed.slice(0,15).map(a=>`- ${fmtDate(a.date)} — ${a.label}: ${a.note}`).join("\n"):"- No activity logged this week.");
+    linesOut.push(""); linesOut.push(`Live follow-ups (${chases.length}):`); linesOut.push(chases.length?chases.map(j=>`- ${j.company} — ${j.role}: ${bestNextAction(j)}`).join("\n"):"- None due right now.");
+    linesOut.push(""); linesOut.push("Constraints / fit notes:"); linesOut.push(`- Salary target: minimum ${money(m.salaryMin)}${m.salaryPref?`, preferred ${money(m.salaryPref)}`:""}`); linesOut.push(`- Commute limit: ${m.commuteMax||""} minutes`); linesOut.push(`- Work preference: ${m.workPref||""}`); linesOut.push(`- Restrictions: ${m.restrictions||"none stated"}`);
+  } else {
+    linesOut.push(`Weekly review — ${new Date().toLocaleDateString("en-GB")}`); linesOut.push("");
+    linesOut.push(`Applications this week: ${apps.length}`); linesOut.push(`Actions completed this week: ${completed.length}`); linesOut.push(`Follow-ups due/overdue: ${chases.length}`); linesOut.push(`Contacts to chase: ${contacts.length}`); linesOut.push(`Interviews/prep-stage jobs: ${interviews.length}`); linesOut.push(`Closed this week: ${closed.length}`); linesOut.push("");
+    linesOut.push("Applications:"); linesOut.push(apps.length?apps.map(bulletJob).join("\n"):"- None recorded.");
+    linesOut.push(""); linesOut.push("Completed activity:"); linesOut.push(completed.length?completed.slice(0,20).map(a=>`- ${fmtDate(a.date)} — ${a.label}: ${a.note}`).join("\n"):"- None logged.");
+    linesOut.push(""); linesOut.push("Top next actions:"); linesOut.push(chases.slice(0,8).map(j=>`- ${j.company}: ${bestNextAction(j)}`).join("\n") || `- ${neutralNextStep()}`);
+    linesOut.push(""); linesOut.push("Gaps:"); const health=p.jobs.filter(j=>!isClosedJob(j)&&dataWarnings(j).length).slice(0,5); linesOut.push(health.length?health.map(j=>`- ${j.company}: ${dataWarnings(j).slice(0,2).join("; ")}`).join("\n"):"- No major data-health gaps flagged.");
+  }
+  return linesOut.join("\n");
+}
+
+function openWeeklySummaryExport(){
+  const style=S().weeklySummaryStyle||"Personal review";
+  const text=weeklySummaryText(style);
+  sheet("Weekly summary export",`<p class="muted">Profile style: <b>${esc(style)}</b>. Change it in Profile Setup.</p><textarea class="in" id="weeklyOut" style="min-height:360px">${esc(text)}</textarea><div class="btnrow" style="margin-top:12px"><button class="btn primary" onclick="shareWeeklySummary()">Share / copy</button><button class="btn" onclick="copyTextFallback($('#weeklyOut').value,'Weekly summary copied')">Copy</button></div>`);
+}
+function shareWeeklySummary(){ const text=$("#weeklyOut")?$("#weeklyOut").value:weeklySummaryText(); if(navigator.share){ navigator.share({title:"CareerConsole weekly summary",text}).then(()=>toast("Shared")).catch(()=>copyTextFallback(text,"Copied instead")); } else copyTextFallback(text,"Weekly summary copied"); }
+
 function openWeekly(){
   const p=P(); const live=p.jobs.filter(j=>!["Archive","Reject"].includes(j.decision));
   const priority=live.filter(j=>{const d=j.decision||suggestDecision(j);return d.startsWith("Apply")||d.startsWith("Prepare");});
@@ -1468,7 +1348,8 @@ function openWeekly(){
   const chase=p.contacts.filter(c=>c.status==="Sent / awaiting reply");
   const toSend=live.filter(j=>(j.decision||suggestDecision(j)).startsWith("Apply")&&j.stage!=="Applied");
   const toArchive=live.filter(j=>isStale(j)&&j.waiting==="me");
-  const interviews=live.filter(j=>j.stage==="Interview");
+  const interviews=live.filter(j=>j.stage==="Interview" || j.interviewDate);
+  const health=live.filter(j=>dataWarnings(j).length);
   const cvTasks=p.cvVariants.filter(v=>!v.note);
   const sec=(t,arr,fmt)=>`<h2 class="sec">${t} (${arr.length})</h2>`+(arr.length?arr.map(fmt).join(""):`<div class="muted" style="margin-bottom:6px">None.</div>`);
   let h="";
@@ -1476,20 +1357,26 @@ function openWeekly(){
   h+=sec("Follow-ups due",followDue,j=>`<div class="kv">• ${esc(j.company)} — due ${fmtDate(j.dueDate)}</div>`);
   h+=sec("Contacts to chase",chase,c=>`<div class="kv">• ${esc(c.name)} (${esc(c.company||"")})</div>`);
   h+=sec("Applications to send",toSend,j=>`<div class="kv">• ${esc(j.company)} — ${esc(j.role)}</div>`);
-  h+=sec("Interview prep needed",interviews,j=>`<div class="kv">• ${esc(j.company)}</div>`);
+  h+=sec("Interview prep needed",interviews,j=>`<div class="kv">• ${esc(j.company)} — ${esc(interviewLabel(j)||"date not set")}</div>`);
+  h+=sec("Data health fixes",health,j=>`<div class="kv">• ${esc(j.company)} — ${esc(dataWarnings(j).slice(0,2).join("; "))}</div>`);
   h+=sec("Jobs to archive (stale)",toArchive,j=>`<div class="kv">• ${esc(j.company)} — last touched ${fmtDate(j.updated)}</div>`);
   h+=sec("CV / document tasks",cvTasks,v=>`<div class="kv">• ${esc(v.name)} needs positioning note</div>`);
-  sheet("Weekly review",h+`<button class="btn primary full" style="margin-top:14px" onclick="exportForAI()">Export this for AI review</button>`);
+  sheet("Weekly review",h+`<div class="btnrow" style="margin-top:14px"><button class="btn primary full" onclick="openWeeklySummaryExport()">Create weekly summary</button><button class="btn full" onclick="exportForAI()">Export this for AI review</button></div>`);
 }
 
 /* ---------- .ics ---------- */
 function exportICS(){
-  const p=P(); const ev=p.jobs.filter(j=>j.dueDate&&!["Archive","Reject"].includes(j.decision)).map(j=>{
-    const d=j.dueDate.replace(/-/g,"");
-    return ["BEGIN:VEVENT","UID:"+j.id+"@careerconsole","DTSTART;VALUE=DATE:"+d,"DTEND;VALUE=DATE:"+d,"SUMMARY:"+(j.nextAction||"Action")+" — "+j.company,"DESCRIPTION:"+(j.role||"")+" | "+(j.decision||suggestDecision(j)),"END:VEVENT"].join("\r\n");
+  const p=P(); const ev=[];
+  p.jobs.filter(j=>j.dueDate&&!isClosedJob(j)).forEach(j=>{
+    const d=j.dueDate.replace(/-/g,""); ev.push(["BEGIN:VEVENT","UID:"+j.id+"-due@careerconsole","DTSTART;VALUE=DATE:"+d,"DTEND;VALUE=DATE:"+d,"SUMMARY:"+(j.nextAction||"Action")+" — "+j.company,"DESCRIPTION:"+(j.role||"")+" | "+bestNextAction(j),"END:VEVENT"].join("\r\n"));
   });
-  if(!ev.length){ toast("No dated actions to export"); return; }
-  downloadFile("careerconsole_reminders.ics",["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//CareerConsole//v13//EN",...ev,"END:VCALENDAR"].join("\r\n"),"text/calendar");
+  p.jobs.filter(j=>j.interviewDate&&!isClosedJob(j)).forEach(j=>{
+    const d=new Date(j.interviewDate); if(isNaN(d)) return; const stamp=d.toISOString().replace(/[-:]/g,"").replace(/\.\d{3}/,"");
+    const end=new Date(d.getTime()+60*60000).toISOString().replace(/[-:]/g,"").replace(/\.\d{3}/,"");
+    ev.push(["BEGIN:VEVENT","UID:"+j.id+"-interview@careerconsole","DTSTART:"+stamp,"DTEND:"+end,"SUMMARY:Interview — "+j.company,"DESCRIPTION:"+(j.role||"")+" | "+(j.interviewType||"")+" | "+(j.interviewNotes||""),"LOCATION:"+(j.interviewLocation||j.siteAddress||""),"END:VEVENT"].join("\r\n"));
+  });
+  if(!ev.length){ toast("No dated actions/interviews to export"); return; }
+  downloadFile("careerconsole_reminders.ics",["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//CareerConsole//v14.1//EN",...ev,"END:VCALENDAR"].join("\r\n"),"text/calendar");
   toast("Calendar file downloaded");
 }
 
@@ -1536,10 +1423,11 @@ function exportForAI(){
     L.push(`\n• ${j.company} — ${j.role} [${j.decision||suggestDecision(j)}] score ${sc.score}/10`);
     L.push(`  applied:${j.appliedDate||"-"} source:${j.source||"-"} ref:${j.ref||"-"} priority:${j.priority||"-"}`);
     L.push(`  site:${j.siteAddress||"?"} salary:${money(j.salary)} commute:${j.commuteMins||"?"}m driving:${j.drivingRequired?"YES":"no"} travel:${j.travelPct||0}% stage:${j.stage}`);
-    L.push(`  next:${j.nextAction||"-"} due:${j.dueDate||"-"} risk:${j.mainRisk||"-"} contact:${c?c.name:"none"}`);
+    L.push(`  best_next:${bestNextAction(j)} due:${j.dueDate||"-"} interview:${j.interviewDate||"-"} risk:${j.mainRisk||"-"} driving_risk:${drivingRisk(j).risk} contact:${c?c.name:"none"}`);
+    L.push(`  cv:${j.cvUsed||"-"} cover:${j.coverLetterUsed||"-"} dbs:${j.dbsLikely||"-"} disclosure:${j.disclosureStatus||"-"} warnings:${dataWarnings(j).join("; ")||"none"}`);
     L.push(`  factors: ${sc.reasons.map(r=>r[1]).join("; ")}`); });
   L.push("\n=== CONTACTS ("+p.contacts.length+") ===");
-  p.contacts.forEach(c=>L.push(`• ${c.name} (${c.type}/${c.status}) ${c.company||""} — linked jobs:${(c.jobIds||[]).length}`));
+  p.contacts.forEach(c=>L.push(`• ${c.name} (${c.type}/${c.status}) ${c.company||""} — next:${c.nextTouchDate||"-"} phone:${c.phone||"-"} linkedin:${c.linkedinUrl||"-"} linked jobs:${(c.jobIds||[]).length}`));
   L.push("\n=== EVIDENCE ==="); p.evidence.forEach(e=>L.push("- "+e.text));
   L.push("\n=== STAR ==="); p.starBank.forEach(s=>L.push("- "+s.title));
   const text=L.join("\n");
@@ -1581,7 +1469,7 @@ function doImportV12(v){
     if(!name && !email){ rep.skipped.push("contact w/o name"); return; }
     const dup=findContactDuplicate(name,email);
     if(dup){ dup.timeline=[...(dup.timeline||[]),...(Array.isArray(o.timeline)?o.timeline:[])]; return; }
-    p.contacts.push({id:uid(),name:name||email,email,company:pick(o,["company","org","employer"],""),role:pick(o,["role","title"],""),type:pick(o,["type"],"network"),status:normaliseStatus(pick(o,["status","stage"],"Planned")),jobIds:[],timeline:Array.isArray(o.timeline)?o.timeline:[],updated:todayISO(),_raw:o}); rep.contacts++;
+    { const status=normaliseStatus(pick(o,["status","stage"],"Planned")); const last=pick(o,["lastTouchDate","lastContact","updated"],todayISO()); p.contacts.push({id:uid(),name:name||email,email,phone:pick(o,["phone","mobile"],""),linkedinUrl:pick(o,["linkedinUrl","linkedin","linkedIn"],""),company:pick(o,["company","org","employer"],""),role:pick(o,["role","title"],""),type:pick(o,["type"],"network"),status,lastTouchDate:last,nextTouchDate:pick(o,["nextTouchDate","nextTouch"],defaultNextTouch(status,last)),followUpRule:"auto",jobIds:[],timeline:Array.isArray(o.timeline)?o.timeline:[],updated:todayISO(),_raw:o}); rep.contacts++; }
   });
   (v.variants||v.cvVariants||[]).forEach(x=>{ p.cvVariants.push({id:uid(),name:pick(x,["name","title","label"],"CV variant"),note:pick(x,["note","desc","mapping","file"],""),updated:todayISO()}); rep.cv++; });
   (v.starExamples||v.star||v.starBank||[]).forEach(x=>{ p.starBank.push({id:uid(),title:pick(x,["title","name"],"STAR"),situation:pick(x,["situation","s"],""),task:pick(x,["task","t"],""),action:pick(x,["action","a"],""),result:pick(x,["result","r"],""),updated:todayISO()}); rep.star++; });
@@ -1601,8 +1489,18 @@ function doImportV12(v){
    ============================================================ */
 let sheetOpen=false;
 function sheet(title,html){
-  $("#modalRoot").innerHTML=`<div class="sheet-wrap" onclick="if(event.target===this)closeSheet()"><div class="sheet"><div class="grab"></div><div class="row between" style="margin-bottom:10px"><h3>${title}</h3><button class="closex" onclick="closeSheet()">×</button></div>${html}</div></div>`;
+  $("#modalRoot").innerHTML=`<div class="sheet-wrap" onclick="if(event.target===this)closeSheet()"><div class="sheet"><div class="grab" role="button" aria-label="Drag down to close"></div><div class="row between" style="margin-bottom:10px"><h3>${title}</h3><button class="closex" onclick="closeSheet()">×</button></div>${html}</div></div>`;
+  setupSheetDrag();
   if(!sheetOpen){ sheetOpen=true; try{ history.pushState({cc:"sheet"},""); }catch(e){} }
+}
+function setupSheetDrag(){
+  const sh=$(".sheet"), grab=$(".sheet .grab"); if(!sh||!grab) return;
+  let startY=0,dy=0,drag=false;
+  const start=e=>{ drag=true; dy=0; startY=(e.touches?e.touches[0].clientY:e.clientY); sh.classList.add("dragging"); };
+  const move=e=>{ if(!drag)return; const y=(e.touches?e.touches[0].clientY:e.clientY); dy=Math.max(0,y-startY); sh.style.transform=`translateY(${dy}px)`; if(e.cancelable)e.preventDefault(); };
+  const end=()=>{ if(!drag)return; drag=false; sh.classList.remove("dragging"); if(dy>90){ closeSheet(); } else { sh.style.transform=""; } };
+  grab.addEventListener("touchstart",start,{passive:true}); grab.addEventListener("touchmove",move,{passive:false}); grab.addEventListener("touchend",end);
+  grab.addEventListener("mousedown",start); window.addEventListener("mousemove",move); window.addEventListener("mouseup",end);
 }
 function closeSheet(){
   $("#modalRoot").innerHTML="";

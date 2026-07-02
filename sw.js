@@ -1,4 +1,4 @@
-/* CareerConsole v13.5 service worker
+/* CareerConsole v14.2 service worker
    Cache strategy:
    - App shell (HTML/manifest): NETWORK-FIRST, fall back to cache when offline.
      This is the fix for "tabs/cache broke after upload" — a new deploy is always
@@ -6,7 +6,7 @@
    - Icons / static assets: cache-first.
    Bump CACHE on every release so old caches are purged.
 */
-const CACHE = "careerconsole-v13-5-0";
+const CACHE = "careerconsole-v14-2-0";
 const CORE = [
   "./",
   "./index.html",
